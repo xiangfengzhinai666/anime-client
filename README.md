@@ -3,7 +3,7 @@
 Windows 优先的追番客户端，参照 [Sle2p/AniCh](https://github.com/Sle2p/AniCh) 的产品形态**重新实现**（非 fork：上游无 LICENSE，且其 1.5.x 版本不开源）。
 
 > 当前状态：**S1 完成 ✅**（分层骨架 / 主题 / 导航 / 本地库 / 日志与兜底）
-> 阶段报告：[S0](docs/S0-REPORT.md) · [S0 复验](docs/S0-VERIFY.md) · [S1](docs/S1-REPORT.md)
+> 阶段报告：[S0](docs/S0-REPORT.md) · [S0 复验](docs/S0-VERIFY.md) · [S1](docs/S1-REPORT.md) · [S1 复验](docs/S1-VERIFY.md)
 
 ![S0 自检窗口](docs/assets/s0-selfcheck.png)
 
