@@ -1,60 +1,72 @@
-﻿# 杩界暘瀹㈡埛绔紙AniCh 褰㈡€佸鍒?路 涓汉鑷敤锛?
-Windows 浼樺厛鐨勮拷鐣鎴风锛屽弬鐓?[Sle2p/AniCh](https://github.com/Sle2p/AniCh) 鐨勪骇鍝佸舰鎬?*閲嶆柊瀹炵幇**锛堥潪 fork锛氫笂娓告棤 LICENSE锛屼笖鍏?1.5.x 鐗堟湰涓嶅紑婧愶級銆?
-> 褰撳墠鐘舵€侊細**S0 瀹屾垚 鉁?+ 宸插楠?*锛堢幆澧?/ 鑴氭墜鏋?/ 鑷绐楀彛 / 鍝佺墝鍥炬爣锛?> 璇﹁ [docs/S0-REPORT.md](docs/S0-REPORT.md) 涓?[docs/S0-VERIFY.md](docs/S0-VERIFY.md)
+# 追番客户端（AniCh 形态复刻 · 个人自用）
 
-![S0 鑷绐楀彛](docs/assets/s0-selfcheck.png)
+Windows 优先的追番客户端，参照 [Sle2p/AniCh](https://github.com/Sle2p/AniCh) 的产品形态**重新实现**（非 fork：上游无 LICENSE，且其 1.5.x 版本不开源）。
 
-## 鍝佺墝
+> 当前状态：**S0 完成 ✅ + 已复验**（环境 / 脚手架 / 自检窗口 / 品牌图标）
+> 详见 [docs/S0-REPORT.md](docs/S0-REPORT.md) 与 [docs/S0-VERIFY.md](docs/S0-VERIFY.md)
 
-鍥炬爣鍙栬嚜鏈湴绱犳潗锛堜釜浜轰娇鐢級锛屼竷妗?ICO 瑕嗙洊 16鈥?56 px锛涙崲鍥句竴鏉″懡浠わ細
+![S0 自检窗口](docs/assets/s0-selfcheck.png)
+
+## 品牌
+
+图标取自本地素材（个人使用），七档 ICO 覆盖 16–256 px；换图一条命令：
 
 ```powershell
 python scripts/gen_icon.py "D:\pics\fav.jpg" --crop 0.84
 flutter build windows --release
 ```
 
-![鍥炬爣鍚勫昂瀵竇(docs/assets/icon-sizes.png)
+![图标各尺寸](docs/assets/icon-sizes.png)
 
-## 蹇€熷紑濮?
+## 快速开始
+
 ```powershell
 flutter pub get
-flutter test                        # 3 涓嚜妫€鐢ㄤ緥
-flutter run -d windows              # 寮€鍙戣繍琛?flutter build windows --release     # 浜у嚭 build\windows\x64\runner\Release\anime_client.exe
+flutter test                        # 3 个自检用例
+flutter run -d windows              # 开发运行
+flutter build windows --release     # 产出 build\windows\x64\runner\Release\anime_client.exe
 ```
 
-宸ュ叿閾剧増鏈笌璺緞瑙?[docs/TOOLCHAIN.md](docs/TOOLCHAIN.md)锛堝惈浠ｇ悊銆佹埅鍥俱€佸凡鐭ュ潙锛夈€?
-## 鐩爣锛圱ier 1锛氳兘鐪嬶級
+工具链版本与路径见 [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md)（含代理、截图、已知坑）。
 
-- 棣栭〉 / 鐣墽绱㈠紩 / 鎼滅储 / 璇︽儏 / 鍓ч泦
-- 鎾斁鍣細澶氱嚎璺€侀€夐泦銆佸€嶉€熴€佸叏灞忋€佸揩鎹烽敭銆佺画鎾?- 寮瑰箷锛氳嚜鐮斿紩鎿庯紙杞ㄩ亾 / 纰版挒 / 鎻忚竟锛? 澶氳矾寮瑰箷鏁版嵁 + 鍏抽敭璇嶅睆钄?- 杩界暘锛堟兂鐪?/ 鍦ㄧ湅 / 鐪嬭繃锛夈€佽鐪嬪巻鍙?- 鎵撳寘涓哄彲鍙屽嚮杩愯鐨?exe
+## 目标（Tier 1：能看）
 
-## 鎶€鏈€夊瀷
+- 首页 / 番剧索引 / 搜索 / 详情 / 剧集
+- 播放器：多线路、选集、倍速、全屏、快捷键、续播
+- 弹幕：自研引擎（轨道 / 碰撞 / 描边）+ 多路弹幕数据 + 关键词屏蔽
+- 追番（想看 / 在看 / 看过）、观看历史
+- 打包为可双击运行的 exe
 
-| 灞?| 閫夊瀷 | 璇存槑 |
+## 技术选型
+
+| 层 | 选型 | 说明 |
 |---|---|---|
-| 妗嗘灦 | Flutter | 涓€濂椾唬鐮侊紝鍚庣画鍙嚭 Android |
-| 鎾斁 | media_kit (libmpv) | 纭В / HLS / 鎴浘 / 鍊嶉€?|
-| 鐘舵€佺鐞?| Riverpod | 鍙祴銆佷緷璧栨竻鏅?|
-| 鏈湴瀛樺偍 | drift (SQLite) | 鍘嗗彶銆佽拷鐣€佽繘搴︺€佸脊骞曠紦瀛?|
-| 婧愭帴鍏?| 閫傞厤鍣ㄦ彃浠跺寲 | 鍔犱竴涓簮 = 鍔犱竴涓?adapter锛屼笉鏀逛富娴佺▼ |
+| 框架 | Flutter | 一套代码，后续可出 Android |
+| 播放 | media_kit (libmpv) | 硬解 / HLS / 截图 / 倍速 |
+| 状态管理 | Riverpod | 可测、依赖清晰 |
+| 本地存储 | drift (SQLite) | 历史、追番、进度、弹幕缓存 |
+| 源接入 | 适配器插件化 | 加一个源 = 加一个 adapter，不改主流程 |
 
-## 闃舵鍒掑垎
+## 阶段划分
 
-| 闃舵 | 鍐呭 | 鐘舵€?|
+| 阶段 | 内容 | 状态 |
 |---|---|---|
-| S0 | 鐜锛團lutter SDK / VS Build Tools锛?| 鉁?瀹屾垚 |
-| S1 | 楠ㄦ灦锛堜富棰?/ 璺敱 / 瀵艰埅 / 鏈湴搴擄級 | 寰呭紑濮?|
-| S2 | 鏁版嵁灞傦紙鍏冩暟鎹?/ 绱㈠紩 / 鎼滅储 / 璇︽儏锛?| 寰呭紑濮?|
-| S3 | 鎾斁鍣?+ 绗竴涓簮閫傞厤鍣?| 寰呭紑濮?|
-| S4 | 寮瑰箷寮曟搸 + 澶氳矾鏁版嵁 | 寰呭紑濮?|
-| S5 | 杩界暘 / 鍘嗗彶 | 寰呭紑濮?|
-| S6 | 鎵撳寘锛坋xe / 瀹夎鍣級 | 寰呭紑濮?|
-| S7 | 澶氭簮 + 鍥涜矾寮瑰箷锛圱ier 2锛?| 寰呭紑濮?|
-| S8 | 瓒呭垎 / 涓嬭浇 / PIP / Android锛圱ier 3锛?| 寰呭紑濮?|
+| S0 | 环境（Flutter SDK / VS Build Tools） | ✅ 完成（已复验） |
+| S1 | 骨架（主题 / 路由 / 导航 / 本地库） | 待开始 |
+| S2 | 数据层（元数据 / 索引 / 搜索 / 详情） | 待开始 |
+| S3 | 播放器 + 第一个源适配器 | 待开始 |
+| S4 | 弹幕引擎 + 多路数据 | 待开始 |
+| S5 | 追番 / 历史 | 待开始 |
+| S6 | 打包（exe / 安装器） | 待开始 |
+| S7 | 多源 + 四路弹幕（Tier 2） | 待开始 |
+| S8 | 超分 / 下载 / PIP / Android（Tier 3） | 待开始 |
 
-## 绾﹀畾
+## 约定
 
-- 浠撳簱淇濇寔 **private**锛屼笉瀵瑰鍒嗗彂銆?- 涓嶆彁浜や换浣曡处鍙枫€乼oken銆乧ookie锛涚櫥褰曟€佷粎瀛樻湰鏈猴紙Windows DPAPI 鍔犲瘑锛夈€?- 姣忎釜闃舵涓€涓?commit / tag锛屼究浜庡洖婊氥€?
-## 鑷磋阿
+- 仓库保持 **private**，不对外分发。
+- 不提交任何账号、token、cookie；登录态仅存本机（Windows DPAPI 加密）。
+- 每个阶段一个 commit / tag，便于回滚。
 
-浜у搧褰㈡€佸弬鑰?[Sle2p/AniCh](https://github.com/Sle2p/AniCh)锛堜粎鍙傝€冭璁★紝鏈娇鐢ㄥ叾浠ｇ爜锛夈€?
+## 致谢
+
+产品形态参考 [Sle2p/AniCh](https://github.com/Sle2p/AniCh)（仅参考设计，未使用其代码）。

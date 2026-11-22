@@ -115,5 +115,6 @@ $env:DSH_SHOT_DELAY_MS = "900"   # 可选，首帧后等待毫秒数
 | VS 装到了奇怪路径（如 `C:\Program`） | `Start-Process -ArgumentList` 数组不加引号 | 用单字符串传参，见上 |
 | `flutter doctor` 报 maven.google.com/github.com 超时 | doctor 的网络探测不走系统代理 | 不影响 Windows 构建 |
 | `.ps1` 报"禁止运行脚本" | 执行策略 Restricted | `pwsh -ExecutionPolicy Bypass -File` |
-| `.ps1` 里中文导致解析报错 | Windows PowerShell 5.1 按 ANSI 读无 BOM 文件 | 用 pwsh 7，或存为 UTF-8 with BOM |
+| `.ps1` 里中文导致解析报错 | Windows PowerShell 5.1 按 ANSI 读无 BOM 文件 | 用 UTF-8 with BOM 保存脚本 |
+| 中文文档被写成乱码 | `Get-Content`/`Set-Content` 在 5.1 默认按 ANSI 转码 | 改文件用编辑器/工具；必须用 PS 时显式 `-Encoding UTF8` 且先确认原编码 |
 | `flutter build` 后换了 VS 路径仍沿用旧缓存 | CMake 缓存记录了旧工具链 | `flutter clean` 后重建 |
