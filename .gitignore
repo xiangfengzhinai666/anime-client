@@ -1,4 +1,4 @@
-# Flutter / Dart
+﻿# Flutter / Dart
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -8,7 +8,7 @@
 build/
 pubspec.lock.bak
 
-# 构建产物
+# 鏋勫缓浜х墿
 *.exe
 *.pdb
 *.dll
@@ -30,13 +30,12 @@ pubspec.lock.bak
 *.ipr
 *.iws
 
-# 系统
+# 绯荤粺
 Thumbs.db
 Desktop.ini
 .DS_Store
 
-# 本地配置与凭据（严禁提交）
-.env
+# 鏈湴閰嶇疆涓庡嚟鎹紙涓ョ鎻愪氦锛?.env
 .env.*
 local.properties
 *.local.json
@@ -46,7 +45,9 @@ secrets/
 *.p12
 *.pfx
 
-# 日志与临时
-*.log
+# 鏃ュ織涓庝复鏃?*.log
 logs/
 *.tmp
+
+# 本地打包产物（S6 会换成正式安装包）
+dist/

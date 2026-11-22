@@ -29,3 +29,16 @@ void useMobileSize(WidgetTester tester) {
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 }
+
+/// 启动应用并等待首帧稳定（不用 pumpAndSettle，避免无限动画卡住）。
+Future<void> bootApp(WidgetTester tester, AppDatabase db) async {
+  await tester.pumpWidget(buildTestApp(db));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
+/// 卸载组件树，让 drift 的流查询释放定时器（否则测试结束会报 timersPending）。
+Future<void> shutdownApp(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump(const Duration(milliseconds: 100));
+}

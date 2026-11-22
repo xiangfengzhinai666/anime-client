@@ -133,7 +133,8 @@ class AppLogger {
     if (_fileEnabled) {
       _openSinkForToday();
       try {
-        _sink?.writeln(record.format());
+        // 用平台换行符：Windows 下日志用 CRLF，记事本直接可读
+        _sink?.write('${record.format()}${Platform.lineTerminator}');
       } catch (_) {
         // 写失败不影响业务
       }
