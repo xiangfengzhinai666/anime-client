@@ -139,13 +139,24 @@ class _Header extends StatelessWidget {
           height: 56,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF7C5CFF), Color(0xFF3FD8C8)],
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x66000000),
+                blurRadius: 16,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(
+              'assets/branding/app_icon.png',
+              width: 56,
+              height: 56,
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.high,
             ),
           ),
-          child: const Icon(Icons.play_circle_fill, size: 30, color: Colors.white),
         ),
         const SizedBox(height: 10),
         Text(
