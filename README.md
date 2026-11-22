@@ -2,8 +2,8 @@
 
 Windows 优先的追番客户端，参照 [Sle2p/AniCh](https://github.com/Sle2p/AniCh) 的产品形态**重新实现**（非 fork：上游无 LICENSE，且其 1.5.x 版本不开源）。
 
-> 当前状态：**S0 完成 ✅ + 已复验**（环境 / 脚手架 / 自检窗口 / 品牌图标）
-> 详见 [docs/S0-REPORT.md](docs/S0-REPORT.md) 与 [docs/S0-VERIFY.md](docs/S0-VERIFY.md)
+> 当前状态：**S1 完成 ✅**（分层骨架 / 主题 / 导航 / 本地库 / 日志与兜底）
+> 阶段报告：[S0](docs/S0-REPORT.md) · [S0 复验](docs/S0-VERIFY.md) · [S1](docs/S1-REPORT.md)
 
 ![S0 自检窗口](docs/assets/s0-selfcheck.png)
 
@@ -37,6 +37,20 @@ flutter build windows --release     # 产出 build\windows\x64\runner\Release\an
 - 追番（想看 / 在看 / 看过）、观看历史
 - 打包为可双击运行的 exe
 
+## 架构（S1 定型）
+
+```
+lib/
+├─ app/        主题令牌 · go_router · AppShell（宽屏侧栏/窄屏底栏）· Riverpod 注入
+├─ core/       日志 · 全局错误兜底 · drift(SQLite) · 路径 · 开发开关
+├─ features/   home / browse / search / library / profile / settings
+└─ dev/        自渲染截图（DSH_SHOT）
+```
+
+约定：`features` 只通过 `app/providers` 暴露的 DAO 访问数据，不直接碰 drift；`core` 不依赖 UI。
+
+![S1 首页](docs/assets/s1/0-home.png)
+
 ## 技术选型
 
 | 层 | 选型 | 说明 |
@@ -52,7 +66,7 @@ flutter build windows --release     # 产出 build\windows\x64\runner\Release\an
 | 阶段 | 内容 | 状态 |
 |---|---|---|
 | S0 | 环境（Flutter SDK / VS Build Tools） | ✅ 完成（已复验） |
-| S1 | 骨架（主题 / 路由 / 导航 / 本地库） | 待开始 |
+| S1 | 骨架（主题 / 路由 / 导航 / 本地库） | ✅ 完成 |
 | S2 | 数据层（元数据 / 索引 / 搜索 / 详情） | 待开始 |
 | S3 | 播放器 + 第一个源适配器 | 待开始 |
 | S4 | 弹幕引擎 + 多路数据 | 待开始 |

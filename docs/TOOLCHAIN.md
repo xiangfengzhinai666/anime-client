@@ -107,6 +107,25 @@ $env:DSH_SHOT_DELAY_MS = "900"   # 可选，首帧后等待毫秒数
 
 实现见 `lib/dev/screenshot.dart`。抓的是 Flutter 自己绘制的帧，与肉眼所见一致。
 
+
+## 代码生成（drift）
+
+数据库表定义在 `lib/core/storage/tables.dart`，DAO 在 `daos.dart`，`app_database.g.dart` 由代码生成：
+
+```powershell
+dart run build_runner build          # 改了表结构后必须重跑
+dart run build_runner watch          # 开发时常驻
+```
+
+- `build.yaml` 里开启了 `store_date_time_values_as_text`：DateTime 以 ISO 文本存，
+  同秒写入的多条记录排序才稳定（默认按秒存整数会乱序）。
+- 新版本 build_runner 已移除 `--delete-conflicting-outputs`，加上会提示被忽略。
+
+## 测试环境的 SQLite
+
+`flutter test` 下没有 `sqlite3_flutter_libs` 提供的 dll，drift 会通过 **native assets**
+自行编译 `sqlite3.dll` 到 `.dart_tool/`（首次约 1–2 分钟，之后秒级），无需额外配置。
+
 ## 已知坑
 
 | 现象 | 原因 | 处理 |

@@ -1,0 +1,9 @@
+# 代码生成配置（drift）
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # DateTime 以 ISO-8601 文本存储（含微秒），保证「按时间排序」精确到毫秒级；
+          # 默认按秒存整数会把同一秒内的两条记录排成随机顺序。
+          store_date_time_values_as_text: true
