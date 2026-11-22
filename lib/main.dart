@@ -7,8 +7,17 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'dev/screenshot.dart';
+
+/// 截图工具用的边界 key（生产环境无副作用）。
+final GlobalKey _shotBoundaryKey = GlobalKey();
+
+/// 进程启动时刻（用于展示冷启动信息）。
+final DateTime _launchedAt = DateTime.now();
+
 void main() {
   runApp(const SelfCheckApp());
+  scheduleScreenshot(_shotBoundaryKey);
 }
 
 class SelfCheckApp extends StatelessWidget {
@@ -22,7 +31,10 @@ class SelfCheckApp extends StatelessWidget {
       themeMode: ThemeMode.dark,
       theme: _theme(Brightness.dark),
       darkTheme: _theme(Brightness.dark),
-      home: const SelfCheckPage(),
+      home: RepaintBoundary(
+        key: _shotBoundaryKey,
+        child: const SelfCheckPage(),
+      ),
     );
   }
 
@@ -64,7 +76,7 @@ class _SelfCheckPageState extends State<SelfCheckPage> {
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
             child: Column(
@@ -72,33 +84,35 @@ class _SelfCheckPageState extends State<SelfCheckPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _Header(theme: theme),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
                 _InfoCard(
                   rows: [
                     ('应用', 'anime_client 0.1.0'),
                     ('Flutter', '3.47.9 · stable'),
                     ('Dart', Platform.version.split(' ').first),
-                    ('引擎渲染', '${Platform.numberOfProcessors} 核 · ${Platform.operatingSystemVersion}'),
-                    ('系统', '${Platform.operatingSystem} · ${Platform.localeName}'),
+                    ('处理器', '${Platform.numberOfProcessors} 线程'),
+                    ('系统', '${Platform.operatingSystem} · ${Platform.operatingSystemVersion}'),
+                    ('区域', Platform.localeName),
                     ('构建模式', isRelease ? 'release' : 'debug'),
-                    ('启动时间', DateTime.now().toIso8601String()),
+                    ('启动时刻', _launchedAt.toIso8601String()),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 _RenderProbe(
                   onPassed: () => setState(() => _probePassed = true),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 _InteractionCard(
                   controller: _controller,
                   passed: _probePassed,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
                 Text(
                   'S0 · 环境自检通过',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.primary,
+                    color: const Color(0xFF9B8CFF),
+                    fontWeight: FontWeight.w600,
                     letterSpacing: 1.2,
                   ),
                 ),
@@ -121,22 +135,22 @@ class _Header extends StatelessWidget {
     return Column(
       children: [
         Container(
-          width: 72,
-          height: 72,
+          width: 56,
+          height: 56,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [Color(0xFF7C5CFF), Color(0xFF3FD8C8)],
             ),
           ),
-          child: const Icon(Icons.play_circle_fill, size: 40, color: Colors.white),
+          child: const Icon(Icons.play_circle_fill, size: 30, color: Colors.white),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
         Text(
           'anime_client',
-          style: theme.textTheme.headlineMedium?.copyWith(
+          style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
           ),
@@ -162,7 +176,7 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFF16161D),
         borderRadius: BorderRadius.circular(16),
@@ -172,7 +186,7 @@ class _InfoCard extends StatelessWidget {
         children: [
           for (final (label, value) in rows)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: 7),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -212,7 +226,7 @@ class _RenderProbe extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF16161D),
         borderRadius: BorderRadius.circular(16),
@@ -232,7 +246,7 @@ class _RenderProbe extends StatelessWidget {
               _Chip(text: '♪ ♡ ★ ✦', color: Color(0xFFFFB454)),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Container(
@@ -248,7 +262,7 @@ class _RenderProbe extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Row(
             children: [
               Icon(Icons.check_circle, size: 18, color: theme.colorScheme.primary),
@@ -305,7 +319,7 @@ class _InteractionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF16161D),
         borderRadius: BorderRadius.circular(16),

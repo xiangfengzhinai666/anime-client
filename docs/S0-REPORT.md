@@ -1,78 +1,80 @@
 # S0 环境报告
 
-> 日期：2026-11-22 · 执行人：lead（自动化） · 验收人：待确认
+> 日期：2026-11-22 · 状态：**✅ 完成**
 
 ## 结论
 
-| 项 | 状态 | 说明 |
+| 项 | 状态 | 证据 |
 |---|---|---|
-| Flutter SDK | ✅ 完成 | 3.47.9 stable，`C:\sofeware\software\flutter` |
-| Dart | ✅ 完成 | 3.13.7 |
-| Windows 桌面目标 | ✅ 完成 | `flutter config --enable-windows-desktop`，devices 中已出现 Windows (desktop) |
-| 项目脚手架 | ✅ 完成 | `flutter create --platforms=windows`，org `com.xiangfeng`，包名 `anime_client` |
-| 自检窗口 | ✅ 完成 | `lib/main.dart`：信息卡 + 渲染探针 + 交互探针 |
-| 静态分析 | ✅ 通过 | `flutter analyze`：No issues found |
-| 单元/Widget 测试 | ✅ 通过 | `flutter test`：3/3 |
-| Visual Studio Build Tools | ❌ **阻塞** | UAC 授权被取消（等待人工点击） |
-| Windows 原生构建/运行 | ⏸ 待验证 | 依赖上一条 |
+| Flutter SDK | ✅ | 3.47.9 stable，`C:\sofeware\software\flutter` |
+| Dart | ✅ | 3.13.7 |
+| VS Build Tools | ✅ | 2022 17.14.37906.3（装在 `C:\Program`，见偏差说明） |
+| Windows SDK | ✅ | 10.0.26100.0 |
+| Windows 桌面目标 | ✅ | `flutter devices` 有 `Windows (desktop) windows-x64` |
+| 项目脚手架 | ✅ | org `com.xiangfeng`，包 `anime_client`，仅 Windows 平台 |
+| 自检窗口 | ✅ | 信息卡 / 渲染探针 / 交互探针 |
+| 静态分析 | ✅ | `No issues found!` |
+| 测试 | ✅ | 3/3 passed |
+| Release 构建 | ✅ | 21.9 s，产出 `anime_client.exe` |
+| 冷启动 | ✅ | 窗口出现 **1266 ms** |
+| 截图验证 | ✅ | `docs/assets/s0-selfcheck.png` |
 
-**S0 未完成**：缺 VS Build Tools（C++ 工作负载 + Windows SDK），因此还不能编译出 exe，也无法做原生窗口截图。
-
-## 已验证的证据
+## 验证输出
 
 ```
-Flutter 3.47.9 • channel stable
-Framework • revision c197ca5199 (3 weeks ago) • 2026-10-29
-Engine • revision 89c39edfdf
-Tools • Dart 3.13.7 • DevTools 2.60.0
-
+$ flutter doctor -v
 [√] Flutter (Channel stable, 3.47.9, on Microsoft Windows [版本 10.0.26200.6584], locale zh-CN)
 [√] Windows Version (Windows 11 or higher, 25H2, 2009)
-[√] Chrome - develop for the web
-[√] Connected device (3 available)
-    • Windows (desktop) • windows • windows-x64
-[X] Visual Studio - develop Windows apps
-    X Visual Studio not installed
-```
+[√] Visual Studio - develop Windows apps (Visual Studio 生成工具 2022 17.14.45)
+    • Visual Studio at C:\Program
+    • Windows 10 SDK version 10.0.26100.0
+[√] Windows (desktop) • windows • windows-x64
 
-```
 $ flutter analyze
-No issues found!
+No issues found! (6.1s)
 
 $ flutter test
-00:00 +3: All tests passed!
+00:01 +3: All tests passed!
+
+$ flutter build windows --release
+Building Windows application...  21.9s
+√ Built build\windows\x64\runner\Release\anime_client.exe
 ```
 
-## 阻断项与解决办法
+## 界面
 
-`vs_buildtools.exe` 以管理员身份启动时弹出 UAC，选择了「否 / 未响应」，安装未执行。
+![S0 自检窗口](assets/s0-selfcheck.png)
 
-**任选一种解决：**
+验证到的渲染能力：中文/日文/拉丁字体回退、渐变与圆角、Material 图标、深色主题、
+可滚动布局、输入框、按钮与 SnackBar、SelectableText 选中复制。
 
-1. 下一条消息我重试时，屏幕上出现 UAC 弹窗，点「是」；
-2. 或你自己以管理员身份打开 PowerShell，粘贴执行：
+## 偏差与遗留
 
-```powershell
-& 'C:\sofeware\software\_dsh_downloads\vs_buildtools.exe' `
-  --quiet --wait --norestart --nocache `
-  --installPath 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools' `
-  --add Microsoft.VisualStudio.Workload.VCTools `
-  --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-  --add Microsoft.VisualStudio.Component.Windows11SDK.22621 `
-  --includeRecommended
-```
+### 1. VS Build Tools 装到了 `C:\Program`（非预期）
 
-预计下载 5–7 GB，10–25 分钟（取决于网速）。
+**原因**：`Start-Process -ArgumentList @(...)` 拼接参数时不加引号，路径中的空格把
+`--installPath` 的值拆成了 `C:\Program`。
 
-装完自查：
+**影响**：功能完全正常（Flutter 用 `vswhere` 定位，不依赖固定路径），只是路径不常规。
 
-```powershell
-& 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe' -latest -products * -property displayName
-flutter doctor -v   # Visual Studio 一项应变成 √
-```
+**处理**：已写入 [TOOLCHAIN.md](TOOLCHAIN.md)，并在其中给出"卸载 + 重装到 `C:\VS\BuildTools`"
+的完整命令。是否现在重装，交由使用方决定——重装约 20–40 分钟且需要一次 UAC。
 
-## 额外说明
+### 2. 自动化截图方式
 
-- `github.com` 直连不通，git 已配置 `http.proxy=http://127.0.0.1:7897`（Clash）。
-- `flutter doctor` 的 Network resources 会报 maven.google.com / github.com 超时：不影响 Windows 构建，仅影响 Android 目标。
-- 项目路径含空格（`dsh workspace`），已实测 CMake/构建可用；若后续出现路径问题，优先考虑把仓库移到无空格路径。
+桌面会话下无法稳定抓取 GPU 合成画面，改为**应用自渲染截图**（`DSH_SHOT` 环境变量），
+详见 [TOOLCHAIN.md](TOOLCHAIN.md#开发期截图本机自动化验证用)。这条链路后续每一段都能复用。
+
+### 3. 未完成（按计划延后）
+
+- Android 工具链（Android SDK / JDK）—— 计划在 Tier 3 前安装
+- 代码签名、安装器 —— S6
+
+## 下一步（S1 骨架）
+
+1. 目录分层：`app/`（主题、路由、DI）、`core/`（http、日志、存储）、`features/`、`source/`、`danmaku/`
+2. Material 3 主题（深/浅色 + 动态取色）、自定义字体加载策略
+3. 五个主页面骨架：首页 / 索引 / 搜索 / 追番 / 我的
+4. 本地库：drift(SQLite) 建库 + 迁移框架
+5. 日志与全局错误兜底（未捕获异常 → 落地 + 提示）
+6. 验收：五页可切换、窗口 1260×860、冷启动 < 2 s、截图 5 张、测试 ≥ 6 个

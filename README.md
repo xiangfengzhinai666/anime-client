@@ -2,18 +2,21 @@
 
 Windows 优先的追番客户端，参照 [Sle2p/AniCh](https://github.com/Sle2p/AniCh) 的产品形态**重新实现**（非 fork：上游无 LICENSE，且其 1.5.x 版本不开源）。
 
-> 当前状态：**S0 环境准备（90%）**——Flutter 与脚手架已就绪，缺 VS Build Tools 的 C++ 组件（等一次 UAC 授权）。
-> 详见 [docs/S0-REPORT.md](docs/S0-REPORT.md)。
+> 当前状态：**S0 完成 ✅**（环境 + 脚手架 + 自检窗口）
+> 详见 [docs/S0-REPORT.md](docs/S0-REPORT.md)
+
+![S0 自检窗口](docs/assets/s0-selfcheck.png)
 
 ## 快速开始
 
 ```powershell
 flutter pub get
-flutter test              # 3 个自检用例
-flutter run -d windows    # 需先装 VS Build Tools
+flutter test                        # 3 个自检用例
+flutter run -d windows              # 开发运行
+flutter build windows --release     # 产出 build\windows\x64\runner\Release\anime_client.exe
 ```
 
-工具链版本与路径见 [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md)。
+工具链版本与路径见 [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md)（含代理、截图、已知坑）。
 
 ## 目标（Tier 1：能看）
 
@@ -37,7 +40,7 @@ flutter run -d windows    # 需先装 VS Build Tools
 
 | 阶段 | 内容 | 状态 |
 |---|---|---|
-| S0 | 环境（Flutter SDK / VS Build Tools） | 🟡 90%（VS 组件待装） |
+| S0 | 环境（Flutter SDK / VS Build Tools） | ✅ 完成 |
 | S1 | 骨架（主题 / 路由 / 导航 / 本地库） | 待开始 |
 | S2 | 数据层（元数据 / 索引 / 搜索 / 详情） | 待开始 |
 | S3 | 播放器 + 第一个源适配器 | 待开始 |
