@@ -82,7 +82,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
     return PageScaffold(
       title: '搜索',
-      subtitle: '中文名搜 B 站，罗马音/英文同时搜 AniList',
+      subtitle: '同时搜索 B 站与 AniList（中文/西文都可以），并用日文原名补齐季',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -146,7 +146,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             EmptyState(
               icon: Icons.search_off_rounded,
               title: '输入关键词开始搜索',
-              description: '支持中文名、日文原名与英文名；结果会标注来源',
+              description: '支持中文名、日文原名与英文名；结果会标注来源。若没搜到，试试日文原名或罗马音。',
               compact: true,
               action: Text(
                 '当前阶段：S2 元数据层',
@@ -156,7 +156,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ] else ...[
             SectionHeader(
               title: '「$_keyword」的结果',
-              description: '中文名 → B站，罗马音 → AniList',
+              description: 'B 站 + AniList 合并，标注来源',
             ),
             PagedGridView(
               resetToken: _keyword,

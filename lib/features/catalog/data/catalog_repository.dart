@@ -2,6 +2,7 @@ import '../../../core/logging/app_logger.dart';
 import '../../../core/storage/daos.dart';
 import 'anilist_catalog.dart';
 import 'bili_catalog.dart';
+import 'catalog_merge.dart';
 import 'catalog_models.dart';
 
 /// 元数据仓库：把 B 站与 AniList 合成一个「番剧档案」入口。
@@ -54,56 +55,85 @@ class CatalogRepositoryImpl implements CatalogRepository {
       return const CatalogPage(items: [], page: 1, hasMore: false);
     }
 
-    if (_cjk.hasMatch(kw)) {
-      try {
-        return await bili.search(kw, page: page);
-      } catch (e) {
-        logger.warn('catalog', 'B 站搜索失败，退回 AniList：$e');
-      }
-      return anilist.search(kw, page: page);
-    }
-
-    // 拉丁字母查询：两边并发，B 站结果在前
+    // 两个源都查：中文/西文一视同仁。
+    // 之前按语言分流（中文只查 B 站）是错的——AniList 的中文索引虽然漏个别标题
+    // （如「芙莉莲」），但大多数中文名能命中；B 站则受版权限制漏番。
     final results = await Future.wait([
-      bili.search(kw, page: page).catchError((Object e) {
-        logger.warn('catalog', 'B 站搜索失败：$e');
-        return const CatalogPage(items: [], page: 1, hasMore: false);
-      }),
-      anilist.search(kw, page: page).catchError((Object e) {
-        logger.warn('catalog', 'AniList 搜索失败：$e');
-        return const CatalogPage(items: [], page: 1, hasMore: false);
-      }),
+      _safeBiliSearch(kw, page),
+      _safeAniListSearch(kw, page),
     ]);
-
     final biliPage = results[0];
-    final anilistPage = results[1];
-    final merged = _merge(biliPage.items, anilistPage.items);
+    final aniListPage = results[1];
+
+    // 日文桥：B 站结果自带 org_title（日文原名），用它去 AniList 补全所有季。
+    // 例：B 站只有「芙莉莲」S1，AniList 能补出 S2 / 迷你动画。
+    final bridged = page == 1 ? await _bridgeSeasons(biliPage.items) : const <AnimeSummary>[];
+
+    final merged = CatalogMerger.merge(
+      biliPage.items,
+      [...aniListPage.items, ...bridged],
+      trace: (message) => logger.debug('merge', message),
+    );
+    logger.debug(
+      'merge',
+      '主源 ${biliPage.items.length} 条 → 合并后 ${merged.length} 条',
+    );
 
     return CatalogPage(
       items: merged,
       page: page,
-      hasMore: biliPage.hasMore || anilistPage.hasMore,
+      hasMore: biliPage.hasMore || aniListPage.hasMore,
     );
   }
 
-  /// 合并：B 站优先；AniList 里与已有条目"同番"的丢弃。
-  List<AnimeSummary> _merge(
-    List<AnimeSummary> primary,
-    List<AnimeSummary> secondary,
-  ) {
-    final merged = <AnimeSummary>[...primary];
-    for (final candidate in secondary) {
-      final duplicated = merged.any((existing) => TitleMatcher.sameShow(
-            titleA: existing.title,
-            titleB: candidate.title,
-            yearA: existing.year,
-            yearB: candidate.year,
-            episodesA: existing.totalEpisodes,
-            episodesB: candidate.totalEpisodes,
-          ));
-      if (!duplicated) merged.add(candidate);
+  Future<CatalogPage> _safeBiliSearch(String keyword, int page) async {
+    try {
+      return await bili.search(keyword, page: page);
+    } catch (e) {
+      logger.warn('catalog', 'B 站搜索失败（$keyword）：$e');
+      return const CatalogPage(items: [], page: 1, hasMore: false);
     }
-    return merged;
+  }
+
+  Future<CatalogPage> _safeAniListSearch(String keyword, int page) async {
+    try {
+      return await anilist.search(keyword, page: page);
+    } catch (e) {
+      logger.warn('catalog', 'AniList 搜索失败（$keyword）：$e');
+      return CatalogPage(
+        items: const [],
+        page: 1,
+        hasMore: false,
+        source: CatalogSource.anilist,
+      );
+    }
+  }
+
+  /// 用 B 站结果的日文原名去 AniList 找同系列全部季。
+  ///
+  /// 只取前 2 条，避免请求数膨胀；失败静默（不影响主结果）。
+  Future<List<AnimeSummary>> _bridgeSeasons(List<AnimeSummary> biliItems) async {
+    final jpTitles = <String>{};
+    for (final item in biliItems.take(2)) {
+      final jp = item.subtitle.trim();
+      if (jp.isEmpty) continue;
+      // 只要日文（含假名）或罗马音，中文副标题没有桥接价值
+      if (_cjk.hasMatch(jp) || RegExp(r'[A-Za-z]').hasMatch(jp)) {
+        jpTitles.add(jp);
+      }
+    }
+
+    final bridged = <AnimeSummary>[];
+    for (final title in jpTitles) {
+      try {
+        final page = await anilist.search(title, perPage: 12);
+        logger.debug('catalog', '日文桥「$title」→ ${page.items.length} 条');
+        bridged.addAll(page.items);
+      } catch (e) {
+        logger.warn('catalog', '日文桥失败（$title）：$e');
+      }
+    }
+    return bridged;
   }
 
   // ---------------------------------------------------------------- 索引

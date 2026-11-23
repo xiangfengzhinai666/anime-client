@@ -263,12 +263,57 @@ class TitleMatcher {
     final contains = a.contains(b) || b.contains(a);
     if (!equal && !contains) return false;
 
-    if (yearA != null && yearB != null && (yearA - yearB).abs() > 1) {
-      return false;
-    }
-    if (!equal && episodesA != null && episodesB != null) {
-      return episodesA == episodesB;
+    final yearGap =
+        (yearA != null && yearB != null) ? (yearA - yearB).abs() : 0;
+    if (yearGap > 1) return false;
+
+    final bothEpisodes = episodesA != null && episodesB != null;
+    if (bothEpisodes && episodesA != episodesB) {
+      // 相邻年份 + 集数不同 → 大概率是不同 Part（例：无职转生 II 与 II Part 2）
+      if (yearGap == 1) return false;
+      // 只有「标题完全一致」才容忍集数口径差异（B 站常把 SP 算进总数）；
+      // 标题只是包含关系（如「某番 剧场版」）时，集数不同就是不同作品。
+      return equal;
     }
     return true;
+  }
+
+  /// 编辑距离（Levenshtein）。只用于标题近似比较，字符串很短（<40）。
+  static int levenshtein(String a, String b) {
+    if (a == b) return 0;
+    if (a.isEmpty) return b.length;
+    if (b.isEmpty) return a.length;
+
+    var prev = List<int>.generate(b.length + 1, (i) => i);
+    final curr = List<int>.filled(b.length + 1, 0);
+
+    for (var i = 1; i <= a.length; i++) {
+      curr[0] = i;
+      for (var j = 1; j <= b.length; j++) {
+        final cost = a.codeUnitAt(i - 1) == b.codeUnitAt(j - 1) ? 0 : 1;
+        final del = prev[j] + 1;
+        final ins = curr[j - 1] + 1;
+        final sub = prev[j - 1] + cost;
+        curr[j] = del < ins ? (del < sub ? del : sub) : (ins < sub ? ins : sub);
+      }
+      for (var j = 0; j <= b.length; j++) {
+        prev[j] = curr[j];
+      }
+    }
+    return prev[b.length];
+  }
+
+  /// 标题近似相等。
+  ///
+  /// 用来兜住「同一部番，一处简体一处繁体」的情况：
+  /// B 站给「葬送的芙莉莲」，AniList 的别名是「葬送的芙莉蓮」——
+  /// 归一化后仍差一个字，靠编辑距离判定为同一部。
+  static bool similar(String a, String b, {int maxDistance = 1}) {
+    final na = normalize(a);
+    final nb = normalize(b);
+    if (na.isEmpty || nb.isEmpty) return false;
+    if (na == nb) return true;
+    if ((na.length - nb.length).abs() > maxDistance) return false;
+    return levenshtein(na, nb) <= maxDistance;
   }
 }
