@@ -91,6 +91,7 @@ class AnimeEpisode {
     this.durationSeconds = 0,
     this.badge = '',
     this.sectionId = '',
+    this.pubDate = '',
   });
 
   final int index;
@@ -105,6 +106,9 @@ class AnimeEpisode {
   /// 源站的分集 id（次元城用它换播放地址；B 站/AniList 为空）。
   final String sectionId;
 
+  /// 播出日期（B 站有，次元城没有）。
+  final String pubDate;
+
   Map<String, dynamic> toJson() => {
         'index': index,
         'title': title,
@@ -112,6 +116,8 @@ class AnimeEpisode {
         'cid': cid,
         'duration': durationSeconds,
         'badge': badge,
+        'sectionId': sectionId,
+        'pubDate': pubDate,
       };
 
   factory AnimeEpisode.fromJson(Map<String, dynamic> json) => AnimeEpisode(
@@ -121,6 +127,8 @@ class AnimeEpisode {
         cid: json['cid'] as int? ?? 0,
         durationSeconds: json['duration'] as int? ?? 0,
         badge: '${json['badge'] ?? ''}',
+        sectionId: '${json['sectionId'] ?? ''}',
+        pubDate: '${json['pubDate'] ?? ''}',
       );
 }
 

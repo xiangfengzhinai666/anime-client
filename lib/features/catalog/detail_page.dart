@@ -9,6 +9,7 @@ import 'catalog_providers.dart';
 import 'data/catalog_models.dart';
 import 'data/source_match.dart';
 import 'widgets/cover_image.dart';
+import 'widgets/episode_card_grid.dart';
 
 /// 番剧详情页（全屏二级页，路由 `/bangumi/:id`）。
 ///
@@ -194,8 +195,14 @@ class _DetailBody extends ConsumerWidget {
                   compact: true,
                 )
               else
-                _EpisodeGrid(
+                EpisodeCardGrid(
                   episodes: detail.episodes,
+                  meta: ref
+                          .watch(episodeMetaProvider(internalId))
+                          .valueOrNull ??
+                      const {},
+                  fallbackCover: detail.summary.cover,
+                  playable: detail.summary.source == CatalogSource.cycani,
                   onPlay: (index) =>
                       _playResolved(context, ref, detail, index),
                 ),
@@ -373,36 +380,6 @@ class _Stat extends StatelessWidget {
   }
 }
 
-class _EpisodeGrid extends StatelessWidget {
-  const _EpisodeGrid({required this.episodes, required this.onPlay});
-
-  final List<AnimeEpisode> episodes;
-  final ValueChanged<int> onPlay;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: [
-        for (final ep in episodes)
-          Tooltip(
-            message: ep.title,
-            child: OutlinedButton(
-              onPressed: () => onPlay(ep.index),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(64, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-              child: Text('${ep.index}'),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// AniList 补充区：角色 + 评分，异步加载，失败静默。
 class _EnrichmentSection extends ConsumerWidget {
   const _EnrichmentSection({required this.internalId});
 

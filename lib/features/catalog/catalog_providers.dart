@@ -9,6 +9,7 @@ import '../../core/network/api_client.dart';
 import '../../core/storage/daos.dart';
 import 'data/anilist_catalog.dart';
 import 'data/bili_catalog.dart';
+import 'data/bili_episode_matcher.dart';
 import 'data/bili_wbi.dart';
 import 'data/catalog_merge.dart';
 import 'data/catalog_models.dart';
@@ -55,6 +56,28 @@ final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
     cache: ref.watch(catalogCacheDaoProvider),
     logger: ref.watch(appLoggerProvider),
   );
+});
+
+/// B 站分集匹配（弹幕 cid、剧集卡片补图都用它）。
+final biliEpisodeMatcherProvider = Provider<BiliEpisodeMatcher>((ref) {
+  return BiliEpisodeMatcher(
+    ref.watch(biliCatalogProvider),
+    ref.watch(catalogCacheDaoProvider),
+    ref.watch(appLoggerProvider),
+  );
+});
+
+/// 次元城条目的分集补全信息（封面/时长/日期），按集号索引。
+final episodeMetaProvider =
+    FutureProvider.family<Map<int, AnimeEpisode>, String>((ref, internalId) async {
+  final detail = await ref.watch(animeDetailProvider(internalId).future);
+  if (detail.summary.source != CatalogSource.cycani) {
+    return const <int, AnimeEpisode>{};
+  }
+  final episodes =
+      await ref.watch(biliEpisodeMatcherProvider).match(detail.summary);
+  if (episodes == null) return const <int, AnimeEpisode>{};
+  return {for (final ep in episodes) ep.index: ep};
 });
 
 final diskImageCacheProvider = Provider<CoverCache>((ref) {

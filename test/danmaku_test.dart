@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:anime_client/features/catalog/data/catalog_models.dart';
 import 'package:anime_client/features/danmaku/data/danmaku_models.dart';
 import 'package:anime_client/features/danmaku/danmaku_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -129,6 +130,23 @@ void main() {
       expect(restored.bottomMargin, 48);
       expect(restored.outlineWidth, 2.5);
       expect(restored.showTop, isFalse);
+    });
+  });
+
+  group('分集元信息', () {
+    test('pubDate 能序列化往返（剧集卡片要用）', () {
+      const ep = AnimeEpisode(
+        index: 3,
+        title: '第03集',
+        cover: 'https://a/b.jpg',
+        durationSeconds: 1420,
+        sectionId: '9003',
+        pubDate: '2022-11-13',
+      );
+      final restored = AnimeEpisode.fromJson(ep.toJson());
+      expect(restored.pubDate, '2022-11-13');
+      expect(restored.durationSeconds, 1420);
+      expect(restored.sectionId, '9003');
     });
   });
 }

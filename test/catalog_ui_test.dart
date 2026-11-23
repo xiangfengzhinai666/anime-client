@@ -35,9 +35,9 @@ void main() {
     // 任何源的条目都能点播放：应用会自动去找可播放的源
     expect(find.text('从第 1 集开始'), findsOneWidget);
 
-    // 分集按钮存在（第 1/2 集）
-    expect(find.widgetWithText(OutlinedButton, '1'), findsWidgets);
-    expect(find.widgetWithText(OutlinedButton, '2'), findsWidgets);
+    // 分集卡片存在（第 1/2 集）
+    expect(find.textContaining('第 1 集'), findsWidgets);
+    expect(find.textContaining('第 2 集'), findsWidgets);
 
     await shutdownApp(tester);
   });

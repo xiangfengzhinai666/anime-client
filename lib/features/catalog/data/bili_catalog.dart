@@ -230,6 +230,7 @@ class BiliCatalog {
         cid: cid,
         durationSeconds: durationMs ~/ 1000,
         badge: '${ep['badge'] ?? ''}',
+        pubDate: _formatDate(_int(ep['pub_time']) ?? 0),
       ));
     }
 
@@ -298,6 +299,7 @@ class BiliCatalog {
   }
 
   static String _formatDate(int seconds) {
+    if (seconds <= 0) return '';
     final d = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-'
         '${d.day.toString().padLeft(2, '0')}';
