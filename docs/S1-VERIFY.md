@@ -52,7 +52,7 @@ $ flutter build windows --release   71s   ✓ Built anime_client.exe
 
 | 期望 | 实测 |
 |---|---|
-| 创建数据目录 | `C:\Users\Asuka\AppData\Roaming\anime-client\Anime Client\` |
+| 创建数据目录 | `%APPDATA%\anime-client\Anime Client\` |
 | 建库 | `anime_client.sqlite` 24 KB |
 | 建表 | `favorite_entries` / `history_entries` / `setting_entries` |
 | 主键正确 | history `(bangumi_id, episode)`；favorite `(bangumi_id)`；setting `(key)` |

@@ -86,3 +86,9 @@ lib/
 ## 致谢
 
 产品形态参考 [Sle2p/AniCh](https://github.com/Sle2p/AniCh)（仅参考设计，未使用其代码）。
+
+## 许可
+
+- 本项目代码：[MIT](LICENSE)
+- 随包携带的第三方二进制（libmpv / ANGLE / SQLite）：见 [NOTICE.md](NOTICE.md)
+- 个人学习用途，不提供任何内容服务；番剧与弹幕数据来自第三方公开接口。
