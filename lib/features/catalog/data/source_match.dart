@@ -43,6 +43,23 @@ Iterable<String> titleQueryVariants(String raw) sync* {
   }
 }
 
+/// 从标题里取「第 N 季」的 N（没有就返回 null）。
+int? seasonNumber(String title) {
+  final cn = RegExp(r'第([一二三四五六七八九十0-9]+)季').firstMatch(title);
+  if (cn != null) {
+    const digits = {
+      '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+      '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
+    };
+    final raw = cn.group(1)!;
+    return int.tryParse(raw) ?? digits[raw];
+  }
+  final en = RegExp(r'\bSeason\s*(\d+)\b', caseSensitive: false)
+      .firstMatch(title);
+  if (en != null) return int.tryParse(en.group(1)!);
+  return null;
+}
+
 /// 给候选条目打分：同年份、集数接近、非剧场版、标题相似 → 越像分越高。
 int matchScore(AnimeSummary wanted, AnimeSummary candidate) {
   var score = 0;
@@ -75,6 +92,23 @@ int matchScore(AnimeSummary wanted, AnimeSummary candidate) {
     } else {
       score -= 2;
     }
+    // 集数不到对方一半：多半是预告/特番，而不是正片
+    if (candidateEpisodes * 2 < wantedEpisodes) score -= 4;
+  }
+
+  // 「第 N 季」必须对得上，否则会拿第二季弹幕给第一季
+  final wantedSeason = seasonNumber(wanted.title);
+  final candidateSeason = seasonNumber(candidate.title);
+  if (wantedSeason != null && candidateSeason != null) {
+    if (wantedSeason == candidateSeason) {
+      score += 4;
+    } else {
+      score -= 5;
+    }
+  } else if (wantedSeason == null && candidateSeason != null) {
+    score -= 5;
+  } else if (wantedSeason != null && candidateSeason == null) {
+    score -= 1;
   }
 
   if (TitleMatcher.similar(wanted.title, candidate.title)) score += 2;

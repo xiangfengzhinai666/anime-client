@@ -193,7 +193,7 @@ class DanmakuRepository {
         final found = <AnimeSummary>[];
         for (final query in titleQueryVariants(title).take(6)) {
           try {
-            final page = await _bili.search(query, pageSize: 5);
+            final page = await _bili.search(query, pageSize: 10);
             found.addAll(page.items);
           } catch (_) {}
           if (found.isNotEmpty) {
@@ -201,29 +201,41 @@ class DanmakuRepository {
             if (best != null && matchScore(summary, best) >= 6) break;
           }
         }
-        final best = pickBestCandidate(summary, found);
-        if (best == null) {
+        // 按分数排序，逐个试：标题最像的可能是预告/特番（分集为 0）
+        final ranked = found.toList()
+          ..sort((a, b) => matchScore(summary, b).compareTo(matchScore(summary, a)));
+        if (ranked.isEmpty) {
           _logger.debug('danmaku', 'B 站没有匹配到「$title」');
           return null;
         }
-        seasonId = best.sourceId;
-        _logger.debug(
-          'danmaku',
-          'B 站匹配「$title」→「${best.title}」(season=$seasonId, year=${best.year})',
-        );
-        await _cache.put(mappingKey, {'season_id': seasonId});
+
+        for (final candidate in ranked.take(4)) {
+          final cid = await _tryBilibiliSeason(candidate.sourceId, episodeIndex);
+          if (cid != null) {
+            seasonId = candidate.sourceId;
+            _logger.debug(
+              'danmaku',
+              'B 站匹配「$title」→「${candidate.title}」(season=$seasonId, cid=$cid)',
+            );
+            await _cache.put(mappingKey, {'season_id': seasonId});
+            return cid;
+          }
+        }
+        _logger.debug('danmaku', 'B 站候选都没有可用分集（$title）');
+        return null;
       } catch (e) {
         _logger.warn('danmaku', 'B 站番剧匹配失败（$title）：$e');
         return null;
       }
     }
 
+    return _tryBilibiliSeason(seasonId, episodeIndex);
+  }
+
+  /// 取某个 season 第 N 集的 cid；分集为空/无 cid 时返回 null。
+  Future<int?> _tryBilibiliSeason(String seasonId, int episodeIndex) async {
     try {
       final detail = await _bili.detail(seasonId);
-      _logger.debug(
-        'danmaku',
-        'B 站 season=$seasonId 分集 ${detail.episodes.length} 个',
-      );
       if (detail.episodes.isEmpty) return null;
       AnimeEpisode? target;
       for (final ep in detail.episodes) {
@@ -233,10 +245,14 @@ class DanmakuRepository {
         }
       }
       target ??= detail.episodes.first;
-      _logger.debug('danmaku', '第 $episodeIndex 集 cid=${target.cid}');
-      return target.cid == 0 ? null : target.cid;
+      if (target.cid == 0) return null;
+      _logger.debug(
+        'danmaku',
+        'season=$seasonId 分集 ${detail.episodes.length} 个，第 $episodeIndex 集 cid=${target.cid}',
+      );
+      return target.cid;
     } catch (e) {
-      _logger.warn('danmaku', 'B 站分集获取失败（season=$seasonId）：$e');
+      _logger.debug('danmaku', 'season=$seasonId 取分集失败：$e');
       return null;
     }
   }
