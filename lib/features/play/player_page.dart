@@ -15,6 +15,7 @@ import '../../app/theme/app_tokens.dart';
 import '../../core/logging/app_logger.dart';
 import '../catalog/catalog_providers.dart';
 import '../catalog/data/catalog_models.dart';
+import 'arrow_key_gesture.dart';
 import 'data/play_models.dart';
 import 'play_providers.dart';
 import 'widgets/cycani_login_dialog.dart';
@@ -72,6 +73,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   double _speed = 1.0;
   double _speedBeforeHold = 1.0;
   bool _holdingFastForward = false;
+  late final ArrowKeyHoldGesture _arrowKeyGesture;
   Timer? _mousePoll;
 
   Timer? _hideTimer;
@@ -103,6 +105,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     _bindPlayer();
     _load();
     _startMousePolling();
+    _arrowKeyGesture = ArrowKeyHoldGesture(
+      onShortPress: () => _seekRelative(5),
+      onLongPressStart: _holdFastForward,
+      onLongPressEnd: _releaseFastForward,
+    );
+    HardwareKeyboard.instance.addHandler(_onHardwareKey);
   }
 
   /// 每 100ms 轮询一次鼠标右键状态。
@@ -287,6 +295,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onHardwareKey);
+    _arrowKeyGesture.dispose();
     _mousePoll?.cancel();
     _hideTimer?.cancel();
     _saveTimer?.cancel();
@@ -370,6 +380,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     if (mounted) setState(() => _speed = speed);
   }
 
+  /// 键盘 → ：短按跳 5 秒；按住超过 350ms 进入 2 倍速，松开还原。
+  bool _onHardwareKey(KeyEvent event) {
+    if (event.logicalKey != LogicalKeyboardKey.arrowRight) return false;
+    _arrowKeyGesture.handle(event);
+    return true;
+  }
+
   void _seekRelative(int seconds) {
     _seek(_position + Duration(seconds: seconds));
   }
@@ -413,8 +430,6 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
         const SingleActivator(LogicalKeyboardKey.keyK): _togglePlay,
         const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
             _seekRelative(-5),
-        const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
-            _seekRelative(5),
         const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
             _player.setVolume((_volume + 5).clamp(0, 100)),
         const SingleActivator(LogicalKeyboardKey.arrowDown): () =>

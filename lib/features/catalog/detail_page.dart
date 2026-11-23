@@ -7,6 +7,7 @@ import '../../app/widgets/empty_state.dart';
 import '../../app/widgets/section_header.dart';
 import 'catalog_providers.dart';
 import 'data/catalog_models.dart';
+import 'data/source_match.dart';
 import 'widgets/cover_image.dart';
 
 /// 番剧详情页（全屏二级页，路由 `/bangumi/:id`）。
@@ -37,36 +38,34 @@ Future<void> _playResolved(
   );
 
   String? targetId;
-  // 先用中文名，再用日文原名/罗马音兜底
-  final candidates = <String>[
-    summary.title,
-    summary.subtitle,
-  ].map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+  // 中文名 + 日文原名，各自展开成多个查询变体（去标点/去季标/截短…）
+  final queries = <String>{
+    ...titleQueryVariants(summary.title),
+    ...titleQueryVariants(summary.subtitle),
+  };
 
-  for (final title in candidates) {
+  final found = <AnimeSummary>[];
+  for (final query in queries) {
     try {
       final page =
-          await ref.read(cycaniCatalogProvider).search(title, pageSize: 8);
-      if (page.items.isEmpty) continue;
-
-      // 不能直接取第一条：搜"路人女主"第一条可能是剧场版。
-      // 按「年份 + 集数 + 是否剧场版 + 标题相似度」打分挑最像的。
-      AnimeSummary? best;
-      var bestScore = -1 << 30;
-      for (final candidate in page.items) {
-        final score = _matchScore(summary, candidate);
-        if (score > bestScore) {
-          bestScore = score;
-          best = candidate;
-        }
-      }
-      if (best != null) {
+          await ref.read(cycaniCatalogProvider).search(query, pageSize: 8);
+      found.addAll(page.items);
+    } catch (_) {
+      // 换下一个查询词继续
+    }
+    // 已经收集到一些结果就先打分；分数足够高就不必再放宽
+    if (found.length >= 3) {
+      final best = pickBestCandidate(summary, found);
+      if (best != null && matchScore(summary, best) >= 8) {
         targetId = best.id;
         break;
       }
-    } catch (_) {
-      // 换下一个候选标题继续
     }
+  }
+
+  if (targetId == null) {
+    final best = pickBestCandidate(summary, found);
+    if (best != null) targetId = best.id;
   }
 
   if (!context.mounted) return;
@@ -77,45 +76,6 @@ Future<void> _playResolved(
     return;
   }
   context.push('/watch/${Uri.encodeComponent(targetId)}/$episode');
-}
-
-/// 给候选条目打分：同年份、集数接近、非剧场版、标题相似 都得正分。
-int _matchScore(AnimeSummary wanted, AnimeSummary candidate) {
-  var score = 0;
-
-  // 剧场版/总集篇优先级最低
-  if (RegExp(r'剧场版|劇場版|剧场总集篇|Movie|The Movie|Fine|完结篇')
-      .hasMatch(candidate.title)) {
-    score -= 6;
-  }
-
-  if (wanted.year != null && candidate.year != null) {
-    final gap = (wanted.year! - candidate.year!).abs();
-    if (gap == 0) {
-      score += 5;
-    } else if (gap <= 1) {
-      score += 2;
-    } else {
-      score -= 4;
-    }
-  }
-
-  final wantedEpisodes = wanted.totalEpisodes ?? 0;
-  final candidateEpisodes = candidate.totalEpisodes ?? 0;
-  if (wantedEpisodes > 0 && candidateEpisodes > 0) {
-    if (wantedEpisodes == candidateEpisodes) {
-      score += 4;
-    } else if ((wantedEpisodes - candidateEpisodes).abs() <= 2) {
-      score += 1;
-    } else {
-      score -= 2;
-    }
-  }
-
-  if (TitleMatcher.similar(wanted.title, candidate.title)) score += 2;
-  if (wanted.title.trim() == candidate.title.trim()) score += 2;
-
-  return score;
 }
 
 class AnimeDetailPage extends ConsumerWidget {
