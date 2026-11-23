@@ -7,30 +7,35 @@ import '../../app/theme/app_tokens.dart';
 import '../../app/widgets/empty_state.dart';
 import '../../app/widgets/page_scaffold.dart';
 import '../../app/widgets/section_header.dart';
-import '../../core/constants/app_info.dart';
 import '../catalog/catalog_providers.dart';
 import '../catalog/data/catalog_models.dart';
 import '../catalog/widgets/anime_card.dart';
+import '../catalog/widgets/hero_carousel.dart';
 
-/// 首页：本季新番 + 热门推荐 + 继续观看。
+/// 首页：轮播（高分老番）+ 当季新番（中文标题）+ 高分推荐 + 继续观看。
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(recentHistoryProvider);
-    final ongoing = ref.watch(homeOngoingProvider);
-    final topRated = ref.watch(homeTopRatedProvider);
+    final season = ref.watch(homeSeasonProvider);
+    final classic = ref.watch(homeClassicProvider);
+    final popular = ref.watch(homePopularProvider);
+
+    void open(AnimeSummary anime) =>
+        context.push('/bangumi/${Uri.encodeComponent(anime.id)}');
 
     return PageScaffold(
       title: '首页',
-      subtitle: '数据来自 B 站与 AniList',
+      subtitle: '当季新番来自次元城（中文标题），轮播与热门来自 B 站',
       actions: [
         IconButton(
           tooltip: '刷新',
           onPressed: () {
-            ref.invalidate(homeOngoingProvider);
-            ref.invalidate(homeTopRatedProvider);
+            ref.invalidate(homeSeasonProvider);
+            ref.invalidate(homePopularProvider);
+            ref.invalidate(homeClassicProvider);
           },
           icon: const Icon(Icons.refresh_rounded),
         ),
@@ -38,10 +43,28 @@ class HomePage extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _HeroBanner(),
+          _CarouselBlock(
+            page: classic,
+            onOpen: open,
+            onRetry: () => ref.invalidate(homeClassicProvider),
+          ),
           const SizedBox(height: AppSpacing.xl),
           SectionHeader(
-            title: '正在连载',
+            title: '当季新番',
+            description: '中文标题 · 更新进度',
+            trailing: TextButton(
+              onPressed: () => context.go('/browse'),
+              child: const Text('查看全部'),
+            ),
+          ),
+          _CatalogBlock(
+            page: season,
+            onRetry: () => ref.invalidate(homeSeasonProvider),
+            onOpen: open,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SectionHeader(
+            title: '热门推荐',
             description: '按追番人数',
             trailing: TextButton(
               onPressed: () => context.go('/browse'),
@@ -49,21 +72,9 @@ class HomePage extends ConsumerWidget {
             ),
           ),
           _CatalogBlock(
-            page: ongoing,
-            onRetry: () => ref.invalidate(homeOngoingProvider),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          SectionHeader(
-            title: '高分推荐',
-            description: '按评分',
-            trailing: TextButton(
-              onPressed: () => context.go('/browse'),
-              child: const Text('查看全部'),
-            ),
-          ),
-          _CatalogBlock(
-            page: topRated,
-            onRetry: () => ref.invalidate(homeTopRatedProvider),
+            page: popular,
+            onRetry: () => ref.invalidate(homePopularProvider),
+            onOpen: open,
           ),
           const SizedBox(height: AppSpacing.xl),
           const SectionHeader(title: '继续观看', description: '本地记录'),
@@ -92,7 +103,9 @@ class HomePage extends ConsumerWidget {
                 children: [
                   for (final item in items.take(3))
                     _HistoryRow(
-                      title: item.title.isEmpty ? '番剧 ${item.bangumiId}' : item.title,
+                      title: item.title.isEmpty
+                          ? '番剧 ${item.bangumiId}'
+                          : item.title,
                       episode: item.episode,
                       progress: item.durationSeconds == 0
                           ? 0
@@ -108,12 +121,65 @@ class HomePage extends ConsumerWidget {
   }
 }
 
+/// 轮播区：加载中给骨架，失败给可重试的提示。
+class _CarouselBlock extends StatelessWidget {
+  const _CarouselBlock({
+    required this.page,
+    required this.onOpen,
+    required this.onRetry,
+  });
+
+  final AsyncValue<CatalogPage> page;
+  final void Function(AnimeSummary) onOpen;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return page.when(
+      loading: () => Container(
+        height: 300,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: AppRadius.xlAll,
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+      ),
+      error: (error, _) => EmptyState(
+        icon: Icons.cloud_off_rounded,
+        title: '推荐加载失败',
+        description: '$error',
+        compact: true,
+        action: FilledButton.tonal(onPressed: onRetry, child: const Text('重试')),
+      ),
+      data: (data) {
+        if (data.items.isEmpty) return const SizedBox.shrink();
+        // 轮播只要"好看的老番"：排除超长篇（柯南/海贼）与低分作
+        final pool = data.items.where((a) {
+          final eps = a.totalEpisodes;
+          final tooLong = eps != null && eps > 150;
+          final lowScore = (a.score ?? 0) < 8.0;
+          return !tooLong && !lowScore;
+        }).toList();
+        return HeroCarousel(
+          items: pool.length >= 3 ? pool : data.items,
+          onOpen: onOpen,
+        );
+      },
+    );
+  }
+}
+
 /// 一个数据区块：加载骨架 / 错误重试 / 网格。
 class _CatalogBlock extends StatelessWidget {
-  const _CatalogBlock({required this.page, required this.onRetry});
+  const _CatalogBlock({
+    required this.page,
+    required this.onRetry,
+    required this.onOpen,
+  });
 
   final AsyncValue<CatalogPage> page;
   final VoidCallback onRetry;
+  final void Function(AnimeSummary) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -136,8 +202,7 @@ class _CatalogBlock extends StatelessWidget {
         }
         return AnimeGrid(
           items: data.items.take(12).toList(),
-          onTap: (anime) =>
-              context.push('/bangumi/${Uri.encodeComponent(anime.id)}'),
+          onTap: onOpen,
         );
       },
     );
@@ -169,84 +234,6 @@ class _SkeletonGrid extends StatelessWidget {
               borderRadius: AppRadius.mdAll,
               border: Border.all(color: scheme.outlineVariant),
             ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _HeroBanner extends StatelessWidget {
-  const _HeroBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 620;
-        return Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.xlAll,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [scheme.primary.withValues(alpha: 0.28), scheme.surface],
-            ),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (!compact) ...[
-                ClipRRect(
-                  borderRadius: AppRadius.lgAll,
-                  child: Image.asset(
-                    'assets/branding/app_icon.png',
-                    width: 88,
-                    height: 88,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.xl),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('开始追番', style: theme.textTheme.headlineMedium),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      '${AppInfo.displayName} ${AppInfo.version} · '
-                      'B 站 + AniList 双源元数据已接通，播放器在 S3 接入。',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Wrap(
-                      spacing: AppSpacing.md,
-                      runSpacing: AppSpacing.sm,
-                      children: [
-                        FilledButton.icon(
-                          onPressed: () => context.go('/browse'),
-                          icon: const Icon(Icons.explore_outlined, size: 18),
-                          label: const Text('浏览索引'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () => context.go('/search'),
-                          icon: const Icon(Icons.search_rounded, size: 18),
-                          label: const Text('搜索番剧'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ),
         );
       },

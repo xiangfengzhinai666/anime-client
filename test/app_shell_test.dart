@@ -13,7 +13,7 @@ void main() {
 
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
-    expect(find.text('开始追番'), findsOneWidget);
+    expect(find.text('当季新番'), findsOneWidget);
     expect(find.text('继续观看'), findsOneWidget);
 
     await shutdownApp(tester);

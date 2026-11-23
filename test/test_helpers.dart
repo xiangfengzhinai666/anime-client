@@ -91,6 +91,17 @@ class FakeCatalogRepository implements CatalogRepository {
 
   @override
   Future<AnimeDetail?> enrich(AnimeDetail detail) async => null;
+
+  @override
+  Future<CatalogPage> seasonNow({int limit = 12}) async {
+    if (error != null) throw error!;
+    return CatalogPage(
+      items: items.take(limit).toList(),
+      page: 1,
+      hasMore: false,
+      source: CatalogSource.cycani,
+    );
+  }
 }
 
 /// 永不联网的图片缓存。

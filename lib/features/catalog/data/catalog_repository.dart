@@ -3,6 +3,7 @@ import '../../../core/storage/daos.dart';
 import 'anilist_catalog.dart';
 import 'bili_catalog.dart';
 import 'catalog_merge.dart';
+import 'cycani_catalog.dart';
 import 'catalog_models.dart';
 
 /// 元数据仓库：把 B 站与 AniList 合成一个「番剧档案」入口。
@@ -28,6 +29,9 @@ abstract class CatalogRepository {
   Future<AnimeDetail> detail(String internalId, {bool force});
 
   Future<AnimeDetail?> enrich(AnimeDetail detail);
+
+  /// 当季新番（中文标题 + 更新进度）。
+  Future<CatalogPage> seasonNow({int limit});
 }
 
 /// 默认实现：B 站 + AniList + 本地缓存。
@@ -35,6 +39,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
   CatalogRepositoryImpl({
     required this.bili,
     required this.anilist,
+    required this.cycani,
     required this.cache,
     required this.logger,
   });
@@ -43,6 +48,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
 
   final BiliCatalog bili;
   final AniListCatalog anilist;
+  final CycaniCatalog cycani;
   final CatalogCacheDao cache;
   final AppLogger logger;
 
@@ -183,10 +189,33 @@ class CatalogRepositoryImpl implements CatalogRepository {
     final detail = switch (source) {
       CatalogSource.bili => await bili.detail(sourceId),
       CatalogSource.anilist => await anilist.detail(sourceId),
+      CatalogSource.cycani => await cycani.detail(sourceId),
     };
 
     await cache.put(internalId, detail.toJson());
     return detail;
+  }
+
+  /// 当季新番：次元城周表（中文标题 + 更新进度）。
+  ///
+  /// 排序：年份新→旧 → 评分高→低 → 标题，避免周表原顺序看起来随机。
+  @override
+  Future<CatalogPage> seasonNow({int limit = 12}) async {
+    final items = await cycani.weekly()
+      ..sort((a, b) {
+        final yearCmp = (b.year ?? 0).compareTo(a.year ?? 0);
+        if (yearCmp != 0) return yearCmp;
+        final scoreCmp = (b.score ?? 0).compareTo(a.score ?? 0);
+        if (scoreCmp != 0) return scoreCmp;
+        return a.title.compareTo(b.title);
+      });
+
+    return CatalogPage(
+      items: items.take(limit).toList(),
+      page: 1,
+      hasMore: false,
+      source: CatalogSource.cycani,
+    );
   }
 
   /// 用 AniList 给 B 站条目"补档案"（角色表、更完整的简介）。

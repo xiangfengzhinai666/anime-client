@@ -10,6 +10,7 @@ import 'data/bili_catalog.dart';
 import 'data/bili_wbi.dart';
 import 'data/catalog_models.dart';
 import 'data/catalog_repository.dart';
+import 'data/cycani_catalog.dart';
 
 /// 网络与元数据层的依赖装配。
 ///
@@ -35,6 +36,10 @@ final anilistCatalogProvider = Provider<AniListCatalog>((ref) {
   return AniListCatalog(ref.watch(apiClientProvider));
 });
 
+final cycaniCatalogProvider = Provider<CycaniCatalog>((ref) {
+  return CycaniCatalog(ref.watch(apiClientProvider));
+});
+
 final catalogCacheDaoProvider = Provider<CatalogCacheDao>((ref) {
   return CatalogCacheDao(ref.watch(appDatabaseProvider));
 });
@@ -43,6 +48,7 @@ final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
   return CatalogRepositoryImpl(
     bili: ref.watch(biliCatalogProvider),
     anilist: ref.watch(anilistCatalogProvider),
+    cycani: ref.watch(cycaniCatalogProvider),
     cache: ref.watch(catalogCacheDaoProvider),
     logger: ref.watch(appLoggerProvider),
   );
@@ -55,25 +61,33 @@ final diskImageCacheProvider = Provider<CoverCache>((ref) {
   );
 });
 
-/// 首页：正在连载（按追番人数）。
+/// 首页：当季新番（次元城周表，中文标题 + 更新进度）。
 ///
-/// 注意：B 站索引接口会忽略 `year` 参数（已实测），所以这里不用"本季"，
-/// 改用"连载中"这个确实生效的维度，避免界面撒谎。
-final homeOngoingProvider = FutureProvider<CatalogPage>((ref) {
+/// 为什么不用 B 站连载中：那个池子里混着柯南/海绵宝宝这类长寿番，
+/// 且 B 站受版权限制，当季新番大量缺失。
+final homeSeasonProvider = FutureProvider<CatalogPage>((ref) {
+  return ref.watch(catalogRepositoryProvider).seasonNow(limit: 12);
+});
+
+/// 首页：热门推荐（按追番人数，含连载）。
+final homePopularProvider = FutureProvider<CatalogPage>((ref) {
   return ref.watch(catalogRepositoryProvider).browse(
         page: 1,
         pageSize: 12,
-        isFinish: 0,
         order: '3',
       );
 });
 
-/// 首页：高分推荐。
-final homeTopRatedProvider = FutureProvider<CatalogPage>((ref) {
+/// 首页轮播：已完结的老番（按追番人数）。
+///
+/// 为什么不用"评分榜"：B 站评分榜前列混着柯南/小猪佩奇这类超长篇，
+/// 当 banner 很难看；用"完结 + 追番人数"更接近"经典老番"。
+final homeClassicProvider = FutureProvider<CatalogPage>((ref) {
   return ref.watch(catalogRepositoryProvider).browse(
         page: 1,
-        pageSize: 12,
-        order: '2',
+        pageSize: 18,
+        isFinish: 1,
+        order: '3',
       );
 });
 

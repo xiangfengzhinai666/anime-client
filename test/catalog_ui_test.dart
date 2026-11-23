@@ -12,8 +12,8 @@ void main() {
     await bootApp(tester, db);
 
     expect(find.text('葬送的芙莉莲'), findsWidgets);
-    expect(find.text('正在连载'), findsOneWidget);
-    expect(find.text('高分推荐'), findsOneWidget);
+    expect(find.text('当季新番'), findsOneWidget);
+    expect(find.text('热门推荐'), findsOneWidget);
 
     await shutdownApp(tester);
   });

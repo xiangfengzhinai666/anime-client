@@ -3,7 +3,8 @@ import 'package:flutter/foundation.dart';
 /// 元数据来源。
 enum CatalogSource {
   bili('bili', 'B站'),
-  anilist('anilist', 'AniList');
+  anilist('anilist', 'AniList'),
+  cycani('cycani', '次元城');
 
   const CatalogSource(this.key, this.label);
 
