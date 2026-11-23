@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers/app_providers.dart';
@@ -8,6 +10,7 @@ import '../../core/storage/daos.dart';
 import 'data/anilist_catalog.dart';
 import 'data/bili_catalog.dart';
 import 'data/bili_wbi.dart';
+import 'data/catalog_merge.dart';
 import 'data/catalog_models.dart';
 import 'data/catalog_repository.dart';
 import 'data/cycani_catalog.dart';
@@ -78,17 +81,31 @@ final homePopularProvider = FutureProvider<CatalogPage>((ref) {
       );
 });
 
-/// 首页轮播：已完结的老番（按追番人数）。
+/// 首页：日漫老番（已完结），**每天随机**抽取。
 ///
-/// 为什么不用"评分榜"：B 站评分榜前列混着柯南/小猪佩奇这类超长篇，
-/// 当 banner 很难看；用"完结 + 追番人数"更接近"经典老番"。
-final homeClassicProvider = FutureProvider<CatalogPage>((ref) {
-  return ref.watch(catalogRepositoryProvider).browse(
-        page: 1,
-        pageSize: 30,
-        isFinish: 1,
-        order: '3',
-      );
+/// 取 B 站 `is_finish=1 & order=1`（这一维出来的多是犬夜叉/超电磁炮/刀剑神域这类
+/// 真正的老番，而不是按"追番人数"排在前的当季热门），抓 3 页约 72 部，
+/// 同系列去重后按「当天日期」做种子洗牌 —— 同一天打开看到的结果稳定，跨天就换一批。
+final homeClassicProvider = FutureProvider<CatalogPage>((ref) async {
+  final repo = ref.watch(catalogRepositoryProvider);
+
+  final pages = await Future.wait([
+    for (var page = 1; page <= 3; page++)
+      repo.browse(page: page, pageSize: 24, isFinish: 1, order: '1'),
+  ]);
+
+  final all = <AnimeSummary>[];
+  for (final page in pages) {
+    all.addAll(page.items);
+  }
+
+  final distinct = CatalogMerger.distinctSeries(all);
+  // 以日期为种子：同一天内稳定，跨天自动换一批
+  final now = DateTime.now();
+  final seed = now.year * 10000 + now.month * 100 + now.day;
+  distinct.shuffle(Random(seed));
+
+  return CatalogPage(items: distinct, page: 1, hasMore: false);
 });
 
 /// 卡片上的"更新至第 N 话"（仅次元城有数据）。

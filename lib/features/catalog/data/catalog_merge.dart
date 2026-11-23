@@ -76,4 +76,22 @@ class CatalogMerger {
     }
     return true;
   }
+
+  /// 同系列去重：标题归一化后的前 4 个字相同即视为同一系列，只保留第一部。
+  ///
+  /// 例：鬼灭之刃 / 鬼灭之刃 无限列车篇 / 鬼灭之刃 柱训练篇 → 只留第一部。
+  /// 启发式，宁少勿乱。
+  static List<AnimeSummary> distinctSeries(List<AnimeSummary> items) {
+    final seen = <String>{};
+    final out = <AnimeSummary>[];
+    for (final anime in items) {
+      final normalized = TitleMatcher.normalize(anime.title);
+      if (normalized.isEmpty) continue;
+      final key = normalized.length >= 4
+          ? normalized.substring(0, 4)
+          : normalized;
+      if (seen.add(key)) out.add(anime);
+    }
+    return out;
+  }
 }

@@ -143,4 +143,26 @@ void main() {
     );
     expect(merged.length, 1);
   });
+
+  test('同系列去重：鬼灭之刃 各篇只留第一部', () {
+    final items = [
+      _bili(title: '鬼灭之刃 柱训练篇', year: 2024, eps: 8),
+      _bili(title: '鬼灭之刃 刀匠村篇', year: 2023, eps: 11),
+      _bili(title: '鬼灭之刃', year: 2019, eps: 26),
+      _bili(title: '咒术回战', year: 2020, eps: 24),
+    ];
+    final distinct = CatalogMerger.distinctSeries(items);
+    expect(distinct.length, 2);
+    expect(distinct.first.title, '鬼灭之刃 柱训练篇');
+    expect(distinct.last.title, '咒术回战');
+  });
+
+  test('同系列去重：空标题不会让后续条目被吞', () {
+    final distinct = CatalogMerger.distinctSeries([
+      _bili(title: ''),
+      _bili(title: '孤独摇滚', year: 2022, eps: 12),
+    ]);
+    expect(distinct.length, 1);
+    expect(distinct.single.title, '孤独摇滚');
+  });
 }

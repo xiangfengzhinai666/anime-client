@@ -8,27 +8,11 @@ import '../../app/widgets/empty_state.dart';
 import '../../app/widgets/page_scaffold.dart';
 import '../../app/widgets/section_header.dart';
 import '../catalog/catalog_providers.dart';
+import '../catalog/data/catalog_merge.dart';
 import '../catalog/data/catalog_models.dart';
 import '../catalog/widgets/anime_card.dart';
 import '../catalog/widgets/hero_carousel.dart';
 
-/// 同系列去重：标题归一化后的前 4 个字相同即视为同一系列，只保留第一部。
-///
-/// 例：鬼灭之刃 / 鬼灭之刃 无限列车篇 / 鬼灭之刃 柱训练篇 → 只留第一部。
-/// 这是启发式：宁可少推几部，也不要一屏全是同一系列。
-List<AnimeSummary> distinctSeries(List<AnimeSummary> items) {
-  final seen = <String>{};
-  final out = <AnimeSummary>[];
-  for (final anime in items) {
-    final normalized = TitleMatcher.normalize(anime.title);
-    if (normalized.isEmpty) continue;
-    final key = normalized.length >= 4
-        ? normalized.substring(0, 4)
-        : normalized;
-    if (seen.add(key)) out.add(anime);
-  }
-  return out;
-}
 
 /// 首页：轮播（高分老番）+ 当季新番（中文标题）+ 高分推荐 + 继续观看。
 class HomePage extends ConsumerWidget {
@@ -218,7 +202,7 @@ class _CatalogBlock extends StatelessWidget {
           );
         }
         // 同系列只留第一部（鬼灭 5 条连排太丑），再取两行
-        final distinct = distinctSeries(data.items);
+        final distinct = CatalogMerger.distinctSeries(data.items);
         return AnimeGrid(
           items: distinct.take(14).toList(),
           onTap: onOpen,
