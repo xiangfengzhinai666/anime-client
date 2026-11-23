@@ -88,6 +88,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   int _lineIndex = 0;
   bool _needsLogin = false;
   bool _showDanmakuPanel = false;
+  bool _completed = false;
 
   int get _episodeIndex => widget.episode;
 
@@ -97,6 +98,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     windowManager.addListener(this);
     _player = Player();
     _controller = VideoController(_player);
+    // 限制 mpv 的前向/回退缓存：长播时默认缓存能涨到几百 MB
+    final platform = _player.platform;
+    if (platform is NativePlayer) {
+      platform.setProperty('demuxer-max-bytes', '64MiB');
+      platform.setProperty('demuxer-max-back-bytes', '24MiB');
+      platform.getProperty('demuxer-max-bytes').then((value) {
+        _log.debug('play', 'mpv demuxer-max-bytes=$value');
+      });
+    }
     // 只创建一次：控件层频繁 setState 时不要重建 Video（重建纹理容易卡死）
     _video = Video(
       controller: _controller,
@@ -131,6 +141,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     _subs.add(_player.stream.volume
         .listen((v) => setState(() => _volume = v)));
     _subs.add(_player.stream.rate.listen((v) => setState(() => _speed = v)));
+    _subs.add(_player.stream.completed.listen((value) {
+      if (mounted) setState(() => _completed = value);
+    }));
     _subs.add(_player.stream.error.listen((e) {
       if (e.trim().isEmpty) return;
       setState(() {
@@ -481,6 +494,20 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
                           style: TextStyle(color: Colors.white, fontSize: 12),
                         ),
                       ),
+                    ),
+                  if (_completed && _error == null && _needsLogin == false)
+                    _CompletedPanel(
+                      hasNext: _hasNext,
+                      onReplay: () {
+                        setState(() => _completed = false);
+                        _player.seek(Duration.zero);
+                        _player.play();
+                      },
+                      onNext: () {
+                        setState(() => _completed = false);
+                        if (_hasNext) _gotoEpisode(_episodeIndex + 1);
+                      },
+                      onBack: _back,
                     ),
                   if (_error != null) _ErrorPanel(
                     title: _errorTitle,
@@ -959,6 +986,56 @@ class _ErrorPanel extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 播放结束面板：重播 / 下一集。
+class _CompletedPanel extends StatelessWidget {
+  const _CompletedPanel({
+    required this.hasNext,
+    required this.onReplay,
+    required this.onNext,
+    required this.onBack,
+  });
+
+  final bool hasNext;
+  final VoidCallback onReplay;
+  final VoidCallback onNext;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xE6000000),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle_outline_rounded,
+                color: Colors.white70, size: 44),
+            const SizedBox(height: 12),
+            const Text('本集播放结束',
+                style: TextStyle(color: Colors.white, fontSize: 18)),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 12,
+              children: [
+                FilledButton.tonal(
+                  onPressed: onReplay,
+                  child: const Text('重播'),
+                ),
+                if (hasNext)
+                  FilledButton(
+                    onPressed: onNext,
+                    child: const Text('下一集'),
+                  ),
+                TextButton(onPressed: onBack, child: const Text('返回')),
+              ],
+            ),
+          ],
         ),
       ),
     );

@@ -3,7 +3,7 @@
 Windows 优先的追番客户端，参照 [Sle2p/AniCh](https://github.com/Sle2p/AniCh) 的产品形态**重新实现**（非 fork：上游无 LICENSE，且其 1.5.x 版本不开源）。
 
 > 当前状态：**S2 完成 ✅**（双源元数据：B 站 + AniList，搜索/索引/详情全部接通）
-> 阶段报告：[S3](docs/S3-REPORT.md) · [S3 复验](docs/S3-VERIFY.md) · [S4（进行中）](docs/S4-REPORT.md) · 待办与延后项：[docs/BACKLOG.md](docs/BACKLOG.md)  
+> 阶段报告：[S3](docs/S3-REPORT.md) · [S3 复验](docs/S3-VERIFY.md) · [S4（进行中）](docs/S4-REPORT.md) · [S4 长播测试](docs/S4-LONGPLAY.md) · 待办与延后项：[docs/BACKLOG.md](docs/BACKLOG.md)  
 > 阶段报告：[S0](docs/S0-REPORT.md) · [S0 复验](docs/S0-VERIFY.md) · [S1](docs/S1-REPORT.md) · [S1 复验](docs/S1-VERIFY.md) · [S2](docs/S2-REPORT.md)
 
 ![S0 自检窗口](docs/assets/s0-selfcheck.png)
