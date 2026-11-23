@@ -13,6 +13,9 @@ import '../../app/theme/app_tokens.dart';
 import '../../core/logging/app_logger.dart';
 import '../catalog/catalog_providers.dart';
 import '../catalog/data/catalog_models.dart';
+import '../danmaku/danmaku_providers.dart';
+import '../danmaku/danmaku_settings.dart';
+import '../danmaku/widgets/danmaku_overlay.dart';
 import 'arrow_key_gesture.dart';
 import 'data/play_models.dart';
 import 'play_providers.dart';
@@ -79,6 +82,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   AnimeDetail? _detail;
   AnimeEpisode? _episode;
   List<PlayLine> _lines = const [];
+  String _sectionId = '';
   int _lineIndex = 0;
   bool _needsLogin = false;
 
@@ -194,6 +198,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
         _episode = target;
         _lines = lines;
         _lineIndex = 0;
+        _sectionId = sectionId;
       });
 
       await _startPlayback(lines.first.url, resume: resume);
@@ -413,6 +418,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
           _muted = !_muted;
           _player.setVolume(_muted ? 0 : 100);
         },
+        const SingleActivator(LogicalKeyboardKey.keyD): () =>
+            ref.read(danmakuSettingsProvider.notifier).toggleEnabled(),
         const SingleActivator(LogicalKeyboardKey.keyF): _toggleFullscreen,
         const SingleActivator(LogicalKeyboardKey.keyJ): () => _seekRelative(-10),
         const SingleActivator(LogicalKeyboardKey.keyL): () => _seekRelative(10),
@@ -441,6 +448,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
                     _video
                   else
                     const ColoredBox(color: Colors.black),
+                  if (_ready && _sectionId.isNotEmpty && _episode != null)
+                    _buildDanmakuLayer(),
                   if (_buffering && _ready)
                     const Center(
                       child: SizedBox(
@@ -503,6 +512,31 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     final ok = await CycaniLoginDialog.show(context);
     if (!mounted) return;
     if (ok || ref.read(cycaniSessionProvider) != null) _load();
+  }
+
+  Widget _buildDanmakuLayer() {
+    final settings = ref.watch(danmakuSettingsProvider);
+    final request = (
+      internalId: widget.internalId ?? '',
+      sectionId: _sectionId,
+      episode: _episode?.index ?? 1,
+      summary: _detail!.summary,
+    );
+    final bundle = ref.watch(danmakuBundleProvider(request));
+    final items = bundle.valueOrNull?.items ?? const [];
+    return DanmakuOverlay(
+      key: ValueKey(request),
+      items: items,
+      position: _position,
+      playing: _playing,
+      playbackRate: settings.followSpeed ? _speed : 1.0,
+      opacity: settings.opacity,
+      fontSize: settings.fontSize,
+      speedFactor: settings.speedFactor,
+      maxOnScreen: settings.maxOnScreen,
+      blockedPattern: settings.blockedPattern,
+      enabled: settings.enabled && items.isNotEmpty,
+    );
   }
 
   Widget _buildChrome(String title) {
