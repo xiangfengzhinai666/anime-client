@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/utils/dev_env.dart';
+import '../../features/catalog/detail_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../shell/app_shell.dart';
 import 'app_tabs.dart';
@@ -17,7 +18,7 @@ GoRouter buildRouter({int initialTab = 0}) {
   final index = initialTab.clamp(0, AppTab.values.length - 1);
 
   return GoRouter(
-    initialLocation: AppTab.values[index].path,
+    initialLocation: DevEnv.initialRoute ?? AppTab.values[index].path,
     routes: [
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -39,6 +40,13 @@ GoRouter buildRouter({int initialTab = 0}) {
         path: '/settings',
         name: 'settings',
         builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: '/bangumi/:id',
+        name: 'animeDetail',
+        builder: (context, state) => AnimeDetailPage(
+          internalId: Uri.decodeComponent(state.pathParameters['id'] ?? ''),
+        ),
       ),
     ],
     errorBuilder: (context, state) =>

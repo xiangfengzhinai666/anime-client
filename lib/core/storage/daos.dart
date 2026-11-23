@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import 'app_database.dart';
@@ -176,4 +178,66 @@ class SettingsDao {
         _db.delete(_db.settingEntries)..where((t) => t.key.equals(key));
     return stmt.go();
   }
+}
+
+/// 元数据缓存（详情 JSON）。
+class CatalogCacheDao {
+  CatalogCacheDao(this._db);
+
+  final AppDatabase _db;
+
+  /// 默认 6 小时过期：番剧信息不会频繁变，但也不能永远陈旧。
+  Future<Map<String, dynamic>?> get(
+    String internalId, {
+    Duration ttl = const Duration(hours: 6),
+  }) async {
+    final query = _db.select(_db.catalogCacheEntries)
+      ..where((t) => t.internalId.equals(internalId));
+    final row = await query.getSingleOrNull();
+    if (row == null) return null;
+    if (DateTime.now().difference(row.updatedAt) > ttl) return null;
+    try {
+      final decoded = jsonDecode(row.payload);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> put(String internalId, Map<String, dynamic> payload) {
+    return _db.into(_db.catalogCacheEntries).insertOnConflictUpdate(
+          CatalogCacheEntriesCompanion.insert(
+            internalId: internalId,
+            payload: jsonEncode(payload),
+            updatedAt: DateTime.now(),
+          ),
+        );
+  }
+
+  Future<int> count() async {
+    final expr = _db.catalogCacheEntries.internalId.count();
+    final query = _db.selectOnly(_db.catalogCacheEntries)..addColumns([expr]);
+    final row = await query.getSingle();
+    return row.read(expr) ?? 0;
+  }
+
+  /// 清掉超过 [olderThan] 的缓存。
+  ///
+  /// 不直接用 SQL 比较时间字符串：DateTime 以 ISO 文本存储时，
+  /// 小数位长度不同会导致字典序与时间序不一致（曾因此只删掉一半）。
+  /// 数据量很小（几十~几百行），取回内存比较更稳妥。
+  Future<int> prune({Duration olderThan = const Duration(days: 7)}) async {
+    final cutoff = DateTime.now().subtract(olderThan);
+    final rows = await _db.select(_db.catalogCacheEntries).get();
+    final expired = rows
+        .where((row) => row.updatedAt.isBefore(cutoff))
+        .map((row) => row.internalId)
+        .toList();
+    if (expired.isEmpty) return 0;
+    final stmt = _db.delete(_db.catalogCacheEntries)
+      ..where((t) => t.internalId.isIn(expired));
+    return stmt.go();
+  }
+
+  Future<int> clear() => _db.delete(_db.catalogCacheEntries).go();
 }

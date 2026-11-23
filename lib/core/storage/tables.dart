@@ -36,3 +36,14 @@ class SettingEntries extends Table {
   @override
   Set<Column> get primaryKey => {key};
 }
+
+/// 元数据缓存：详情页 JSON 落库，避免每次进详情都打网络。
+class CatalogCacheEntries extends Table {
+  /// 形如 `bili:46089` / `anilist:154587`
+  TextColumn get internalId => text()();
+  TextColumn get payload => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {internalId};
+}

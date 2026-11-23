@@ -126,6 +126,19 @@ dart run build_runner watch          # 开发时常驻
 `flutter test` 下没有 `sqlite3_flutter_libs` 提供的 dll，drift 会通过 **native assets**
 自行编译 `sqlite3.dll` 到 `.dart_tool/`（首次约 1–2 分钟，之后秒级），无需额外配置。
 
+
+## 外部接口注意事项（S2 起）
+
+| 接口 | 注意点 |
+|---|---|
+| `api.bilibili.com` | 必须带 `Referer: https://www.bilibili.com/`；搜索类接口需要 wbi 签名（`wts` + `w_rid`） |
+| wbi 签名 | key 从 `/x/web-interface/nav` 取，会轮换；本项目缓存 10 分钟 |
+| `graphql.anilist.co` | 必须带 User-Agent，否则 403；只支持罗马音/日文名搜索，中文返回 0 条 |
+| 图片 CDN | B 站封面会给 `//` 或 `http://`，统一升级为 https 再缓存 |
+
+**已知接口缺陷**：`pgc/season/index/result` 会忽略 `year` 参数（三个年份返回同一份结果），
+所以索引页没有年份筛选，首页用「正在连载 / 高分推荐」两个确实生效的维度。
+
 ## 已知坑
 
 | 现象 | 原因 | 处理 |

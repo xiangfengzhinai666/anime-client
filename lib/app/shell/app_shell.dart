@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../dev/screenshot.dart';
 import '../routing/app_tabs.dart';
 import '../theme/app_tokens.dart';
 
@@ -26,10 +25,8 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      key: appShotKey,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
           final isWide = constraints.maxWidth >= wideBreakpoint;
 
           final content = Center(
@@ -73,8 +70,7 @@ class AppShell extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
+      );
   }
 }
 

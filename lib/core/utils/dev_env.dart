@@ -10,6 +10,12 @@ class DevEnv {
   static const String shotTabKey = 'DSH_SHOT_TAB';
   static const String shotDelayKey = 'DSH_SHOT_DELAY_MS';
 
+  /// 截图时直接打开某个路由（例如 `/bangumi/bili%3A46089`）。
+  static const String routeKey = 'DSH_SHOT_ROUTE';
+
+  /// 截图时自动填好搜索词（仅搜索页使用）。
+  static const String queryKey = 'DSH_SHOT_QUERY';
+
   static Map<String, String> get _env =>
       Platform.isWindows || Platform.isMacOS || Platform.isLinux
           ? Platform.environment
@@ -27,6 +33,16 @@ class DevEnv {
   static int get initialTabIndex {
     final v = int.tryParse(_env[shotTabKey] ?? '');
     return (v ?? 0).clamp(0, 8);
+  }
+
+  static String? get initialRoute {
+    final v = _env[routeKey];
+    return (v == null || v.isEmpty) ? null : v;
+  }
+
+  static String? get initialQuery {
+    final v = _env[queryKey];
+    return (v == null || v.isEmpty) ? null : v;
   }
 
   static Duration get shotDelay {

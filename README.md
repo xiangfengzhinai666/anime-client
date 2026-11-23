@@ -2,8 +2,8 @@
 
 Windows 优先的追番客户端，参照 [Sle2p/AniCh](https://github.com/Sle2p/AniCh) 的产品形态**重新实现**（非 fork：上游无 LICENSE，且其 1.5.x 版本不开源）。
 
-> 当前状态：**S1 完成 ✅**（分层骨架 / 主题 / 导航 / 本地库 / 日志与兜底）
-> 阶段报告：[S0](docs/S0-REPORT.md) · [S0 复验](docs/S0-VERIFY.md) · [S1](docs/S1-REPORT.md) · [S1 复验](docs/S1-VERIFY.md)
+> 当前状态：**S2 完成 ✅**（双源元数据：B 站 + AniList，搜索/索引/详情全部接通）
+> 阶段报告：[S0](docs/S0-REPORT.md) · [S0 复验](docs/S0-VERIFY.md) · [S1](docs/S1-REPORT.md) · [S1 复验](docs/S1-VERIFY.md) · [S2](docs/S2-REPORT.md)
 
 ![S0 自检窗口](docs/assets/s0-selfcheck.png)
 
@@ -44,12 +44,13 @@ lib/
 ├─ app/        主题令牌 · go_router · AppShell（宽屏侧栏/窄屏底栏）· Riverpod 注入
 ├─ core/       日志 · 全局错误兜底 · drift(SQLite) · 路径 · 开发开关
 ├─ features/   home / browse / search / library / profile / settings
+│              └─ catalog/  元数据层（B 站 + AniList + 缓存）
 └─ dev/        自渲染截图（DSH_SHOT）
 ```
 
 约定：`features` 只通过 `app/providers` 暴露的 DAO 访问数据，不直接碰 drift；`core` 不依赖 UI。
 
-![S1 首页](docs/assets/s1/0-home.png)
+![S2 首页](docs/assets/s2/0-home.png)
 
 ## 技术选型
 
@@ -67,7 +68,7 @@ lib/
 |---|---|---|
 | S0 | 环境（Flutter SDK / VS Build Tools） | ✅ 完成（已复验） |
 | S1 | 骨架（主题 / 路由 / 导航 / 本地库） | ✅ 完成 |
-| S2 | 数据层（元数据 / 索引 / 搜索 / 详情） | 待开始 |
+| S2 | 数据层（网络 / 双源元数据 / 缓存 / 详情页） | ✅ 完成 |
 | S3 | 播放器 + 第一个源适配器 | 待开始 |
 | S4 | 弹幕引擎 + 多路数据 | 待开始 |
 | S5 | 追番 / 历史 | 待开始 |

@@ -76,12 +76,16 @@ class AnimeClientApp extends ConsumerWidget {
       themeMode: themeMode,
       routerConfig: router,
       builder: (context, child) {
-        // 桌面端固定 1.0 缩放，避免系统字体放大把布局撑坏
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.noScaling,
+        // 截图边界放在最外层，任何路由（包括详情页/设置页）都能被抓到
+        return RepaintBoundary(
+          key: appShotKey,
+          child: MediaQuery(
+            // 桌面端固定 1.0 缩放，避免系统字体放大把布局撑坏
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.noScaling,
+            ),
+            child: child ?? const SizedBox.shrink(),
           ),
-          child: child ?? const SizedBox.shrink(),
         );
       },
     );

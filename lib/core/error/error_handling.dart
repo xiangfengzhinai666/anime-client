@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../logging/app_logger.dart';
-import 'fatal_error_view.dart';
+import 'compact_error_view.dart';
 
 /// 安装全局错误兜底。必须在 `runApp` 之前调用。
 ///
@@ -31,6 +31,8 @@ void installGlobalErrorHandlers(AppLogger logger) {
   };
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
-    return FatalErrorView(message: details.exceptionAsString());
+    // 兜底视图要足够小：出错的可能只是列表里的一张卡片，
+    // 用整页大小的视图会把布局撑破。
+    return CompactErrorView(message: details.exceptionAsString());
   };
 }

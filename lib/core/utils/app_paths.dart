@@ -41,4 +41,17 @@ class AppPaths {
     final base = await supportDir();
     return File(p.join(base.path, 'anime_client.sqlite'));
   }
+
+  /// 图片/封面等可再生的缓存目录。
+  static Future<Directory> cacheDir() async {
+    Directory base;
+    try {
+      base = await getApplicationCacheDirectory();
+    } catch (_) {
+      final support = await supportDir();
+      base = Directory(p.join(support.path, 'cache'));
+    }
+    if (!base.existsSync()) base.createSync(recursive: true);
+    return base;
+  }
 }

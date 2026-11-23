@@ -1,0 +1,100 @@
+# S2 元数据层报告
+
+> 日期：2026-11-23 10:40–11:05 · 状态：**✅ 完成**
+> 目标：网络层 + B 站 / AniList 双源元数据 + 封面缓存 + 首页/索引/搜索/详情四个页面接真实数据。
+
+## 一、结论
+
+| 验收项 | 判据 | 实际 | 结果 |
+|---|---|---|---|
+| 静态分析 | 0 issue | `No issues found!` | ✅ |
+| 测试 | 全绿 | **50 个**（S1 的 18 + 新增 32） | ✅ |
+| 真实搜索 | 中文可搜 | 「芙莉莲」→ 2 条（中配版 / 原版），带 season_id | ✅ |
+| 真实索引 | 可翻页 | 鬼灭/咒术/间谍过家家…（按追番人数） | ✅ |
+| 真实详情 | 分集正确 | 28 集（去重后），含 cid | ✅ |
+| 双源合并 | B 站主 + AniList 补 | 详情页出现「AniList 补充：12 个角色 + 评分」 | ✅ |
+| 封面缓存 | 落盘复用 | 62 个文件 / 53.4 MB，LRU 上限 200 MB | ✅ |
+| 冷启动 | < 2 s | **1085–1122 ms**（5 次，均值 1103） | ✅ |
+| 空闲内存 | 无泄漏 | 164 MB，15 s 内不变 | ✅ |
+| Release 构建 | 通过 | 30 s | ✅ |
+
+## 二、这层是怎么搭的
+
+```
+lib/core/network/
+├─ api_client.dart      dio 封装：超时 8/15s、UA、重试（超时/5xx/429，最多 3 次退避）
+│                       统一 ApiException（userMessage + retryable）
+└─ images/              cover_cache.dart（接口）+ disk_image_cache.dart（LRU 落盘）
+
+lib/features/catalog/
+├─ data/
+│  ├─ catalog_models.dart    AnimeSummary / AnimeDetail / AnimeEpisode / Character
+│  │                         + TitleMatcher（跨源同番判定）
+│  ├─ bili_wbi.dart          B 站 wbi 签名（nav 取 key → 置换表 → md5）
+│  ├─ bili_catalog.dart      搜索（wbi）/ 索引 / 详情 / 分集去重
+│  ├─ anilist_catalog.dart   GraphQL 搜索 / 详情 / 角色
+│  └─ catalog_repository.dart 接口 + 实现（合并、缓存、AniList 补充）
+├─ catalog_providers.dart    Riverpod 装配 + 首页/详情/搜索 Provider
+├─ detail_page.dart          详情页（封面、简介、标签、分集、AniList 补充）
+└─ widgets/                  CoverImage / AnimeCard / AnimeGrid / PagedGridView
+```
+
+### 关键设计
+
+1. **元数据与播放源解耦**：`CatalogRepository` 只产出"档案"，S3 的播放源适配器另起一层。
+2. **合并策略保守**：B 站优先；AniList 只在"标题归一化后相等/包含 + 年份差 ≤1 + 集数一致"时才视为同一部，宁可多显示一条，也不误合并。
+3. **AniList 只认日文/罗马音**：中文查询在 AniList 返回 0 条（实测），所以中文一律走 B 站；B 站详情缺 `jp_title` 时，再用 B 站搜索补 `org_title` 去 AniList 匹配。
+4. **分集去重按「集号」**：B 站同一季会下发内地版/中配版两份，`ep_id` 不同但集号相同 —— 按集号去重，保留先出现的正片线路。
+5. **缓存两级**：详情 JSON 落 SQLite（6 小时 TTL），封面图落磁盘（LRU 200 MB）。
+
+## 三、真实数据证据
+
+```
+[搜索] 芙莉莲 → 2 条：葬送的芙莉莲（中配版，2025）/ 葬送的芙莉莲（2023）
+[索引] order=3 → 鬼灭之刃 柱训练篇(9.7) / 咒术回战(9.7) / 间谍过家家 第三季 …
+[详情] season_id=46089 → 28 集（原始 46 条，去重后 28），cid 已保留供 S4 弹幕
+[补充] AniList 命中 154587 → 评分 9.0 + 12 个角色（Frieren / Fern / Stark / Himmel …）
+```
+
+> 分集去重这件事是**看截图**发现的：第一版按 `ep_id` 去重，结果页面上出现
+> "1…16、8、8、9、9…" 两轮重复；改成按集号去重后才正确。
+
+## 四、测试（50 个）
+
+| 文件 | 数量 | 覆盖 |
+|---|---|---|
+| `wbi_test.dart` | 5 | mixinKey 与真实 key 对拍、参数排序/编码、剔除字符、中文编码 |
+| `title_matcher_test.dart` | 9 | 归一化（全角/标点/大小写）、同番判定的正反例 |
+| `catalog_parse_test.dart` | 8 | 详情字段、分集去重排序、搜索高亮剥离、索引解析、AniList 中文别名、序列化往返 |
+| `catalog_cache_test.dart` | 4 | 读写、TTL、覆盖、prune/clear |
+| `catalog_ui_test.dart` | 5 | 首页卡片、点卡进详情、搜索出结果、索引到底提示、错误态重试 |
+| S1 原有 | 19 | 导航、主题、布局五尺寸、历史/追番/设置 DAO、日志 |
+
+## 五、踩到并修掉的 bug（都是真问题）
+
+| # | 现象 | 根因 | 处理 |
+|---|---|---|---|
+| 1 | 首页卡片全变成"界面渲染出错" | `cacheWidth: (double.infinity * 2).round()` 抛 `Infinity toInt` | 只在宽度有限时算 cacheWidth |
+| 2 | 出错卡片撑破布局 | 全局 `ErrorWidget` 用了整页视图 | 新增 `CompactErrorView`（小尺寸兜底） |
+| 3 | 详情页显示 46 集且有重复 | 按 `ep_id` 去重，而中配版/内地版 ep_id 不同 | 改按集号去重 |
+| 4 | "本季新番"里全是海绵宝宝/柯南 | B 站索引接口**忽略 year 参数**（实测三个年份返回同一份） | 改成"正在连载 / 高分推荐"，UI 去掉年份筛选 |
+| 5 | AniList 补充一直不出现 | 中文名在 AniList 搜不到（0 条） | 先借 B 站搜索取 `org_title` 日文名再去匹配 |
+| 6 | 缓存 prune 只删一半 | DateTime 存 ISO 文本，小数位长度不同导致字典序≠时间序 | 取回内存比较后按 id 删除 |
+| 7 | 详情页截图拿不到（exit=2） | 截图边界在 AppShell 内，详情页在 shell 外 | 边界上移到 `MaterialApp.builder` |
+
+## 六、已知限制（不是 bug，是取舍）
+
+| 项 | 说明 | 计划 |
+|---|---|---|
+| 年份筛选 | B 站索引接口不支持，UI 已移除 | 若换源或接口恢复再加 |
+| AniList 的"分集" | 只有总集数，没有分集标题 | 详情页用"第 N 集"占位；B 站源才有真标题 |
+| 中配版/原版重复 | B 站搜索会同时返回两条 | 暂不合并（合并需要配音属性，容易误判） |
+| 封面体积 | 原图 PNG 平均 ~860 KB | 后续可在下载时转码压缩（S6 顺手做） |
+| 搜索结果上限 | 每页 20 条，靠"加载更多"翻页 | 够用 |
+
+## 七、下一步（S3 播放器）
+
+1. `media_kit` 接入 + 播放地址适配器（先接一个源）
+2. 详情页"从第 1 集开始" → 播放页 `/watch/:id/:ep`
+3. 选集 / 线路切换 / 倍速 / 全屏 / 快捷键 / 续播（写 history 表）
+4. 验收：能点开一集看 30 秒、seek 正常、关掉重开续播

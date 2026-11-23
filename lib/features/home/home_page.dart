@@ -6,29 +6,32 @@ import '../../app/providers/app_providers.dart';
 import '../../app/theme/app_tokens.dart';
 import '../../app/widgets/empty_state.dart';
 import '../../app/widgets/page_scaffold.dart';
-import '../../app/widgets/placeholder_grid.dart';
 import '../../app/widgets/section_header.dart';
 import '../../core/constants/app_info.dart';
+import '../catalog/catalog_providers.dart';
+import '../catalog/data/catalog_models.dart';
+import '../catalog/widgets/anime_card.dart';
 
-/// 首页：推荐位 + 继续观看 + 本周更新。
-///
-/// S1 阶段只有结构，数据来自 S2（番剧接口）与 S5（历史）。
+/// 首页：本季新番 + 热门推荐 + 继续观看。
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(recentHistoryProvider);
+    final ongoing = ref.watch(homeOngoingProvider);
+    final topRated = ref.watch(homeTopRatedProvider);
 
     return PageScaffold(
       title: '首页',
-      subtitle: '数据接入后展示本季推荐与更新',
+      subtitle: '数据来自 B 站与 AniList',
       actions: [
         IconButton(
           tooltip: '刷新',
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('数据源将在 S2 接入')),
-          ),
+          onPressed: () {
+            ref.invalidate(homeOngoingProvider);
+            ref.invalidate(homeTopRatedProvider);
+          },
           icon: const Icon(Icons.refresh_rounded),
         ),
       ],
@@ -38,18 +41,34 @@ class HomePage extends ConsumerWidget {
           const _HeroBanner(),
           const SizedBox(height: AppSpacing.xl),
           SectionHeader(
-            title: '继续观看',
-            description: '本地记录',
-            trailing: history.maybeWhen(
-              data: (items) => items.isEmpty
-                  ? const SizedBox.shrink()
-                  : Text('${items.length} 集',
-                      style: Theme.of(context).textTheme.bodySmall),
-              orElse: () => const SizedBox.shrink(),
+            title: '正在连载',
+            description: '按追番人数',
+            trailing: TextButton(
+              onPressed: () => context.go('/browse'),
+              child: const Text('查看全部'),
             ),
           ),
+          _CatalogBlock(
+            page: ongoing,
+            onRetry: () => ref.invalidate(homeOngoingProvider),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SectionHeader(
+            title: '高分推荐',
+            description: '按评分',
+            trailing: TextButton(
+              onPressed: () => context.go('/browse'),
+              child: const Text('查看全部'),
+            ),
+          ),
+          _CatalogBlock(
+            page: topRated,
+            onRetry: () => ref.invalidate(homeTopRatedProvider),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader(title: '继续观看', description: '本地记录'),
           history.when(
-            loading: () => const _LoadingBlock(height: 96),
+            loading: () => const SizedBox.shrink(),
             error: (e, _) => EmptyState(
               icon: Icons.error_outline_rounded,
               title: '读取观看记录失败',
@@ -83,13 +102,76 @@ class HomePage extends ConsumerWidget {
               );
             },
           ),
-          const SizedBox(height: AppSpacing.xl),
-          const SectionHeader(title: '本周更新', description: '占位，等待数据接入'),
-          const PlaceholderGrid(count: 6),
-          const SizedBox(height: AppSpacing.xl),
-          _StageNote(),
         ],
       ),
+    );
+  }
+}
+
+/// 一个数据区块：加载骨架 / 错误重试 / 网格。
+class _CatalogBlock extends StatelessWidget {
+  const _CatalogBlock({required this.page, required this.onRetry});
+
+  final AsyncValue<CatalogPage> page;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return page.when(
+      loading: () => const _SkeletonGrid(),
+      error: (error, _) => EmptyState(
+        icon: Icons.cloud_off_rounded,
+        title: '数据加载失败',
+        description: '$error',
+        compact: true,
+        action: FilledButton.tonal(onPressed: onRetry, child: const Text('重试')),
+      ),
+      data: (data) {
+        if (data.items.isEmpty) {
+          return const EmptyState(
+            icon: Icons.inbox_outlined,
+            title: '这里还没有内容',
+            compact: true,
+          );
+        }
+        return AnimeGrid(
+          items: data.items.take(12).toList(),
+          onTap: (anime) =>
+              context.push('/bangumi/${Uri.encodeComponent(anime.id)}'),
+        );
+      },
+    );
+  }
+}
+
+class _SkeletonGrid extends StatelessWidget {
+  const _SkeletonGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = (constraints.maxWidth / 150).floor().clamp(2, 7);
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: columns,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: AppSpacing.md,
+            mainAxisSpacing: AppSpacing.lg,
+            childAspectRatio: 0.56,
+          ),
+          itemBuilder: (_, _) => DecoratedBox(
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: AppRadius.mdAll,
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -140,8 +222,8 @@ class _HeroBanner extends StatelessWidget {
                     Text('开始追番', style: theme.textTheme.headlineMedium),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      '${AppInfo.displayName} ${AppInfo.version} · ${AppInfo.stage} 骨架已就位，'
-                      '番剧数据将在下一阶段接入。',
+                      '${AppInfo.displayName} ${AppInfo.version} · '
+                      'B 站 + AniList 双源元数据已接通，播放器在 S3 接入。',
                       style: theme.textTheme.bodySmall,
                     ),
                     const SizedBox(height: AppSpacing.lg),
@@ -216,52 +298,16 @@ class _HistoryRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium),
                 const SizedBox(height: 2),
-                Text('第 $episode 集 · ${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%',
-                    style: theme.textTheme.bodySmall),
+                Text(
+                  '第 $episode 集 · ${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%',
+                  style: theme.textTheme.bodySmall,
+                ),
               ],
             ),
           ),
           const Icon(Icons.chevron_right_rounded),
         ],
       ),
-    );
-  }
-}
-
-class _LoadingBlock extends StatelessWidget {
-  const _LoadingBlock({required this.height});
-
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: AppRadius.mdAll,
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-    );
-  }
-}
-
-class _StageNote extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        Icon(Icons.construction_rounded,
-            size: 16, color: theme.colorScheme.onSurfaceVariant),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(
-            '当前阶段：${AppInfo.stage} 骨架。番剧列表、详情、播放器依次在 S2–S4 接入。',
-            style: theme.textTheme.bodySmall,
-          ),
-        ),
-      ],
     );
   }
 }

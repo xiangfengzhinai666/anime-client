@@ -1121,6 +1121,279 @@ class SettingEntriesCompanion extends UpdateCompanion<SettingEntry> {
   }
 }
 
+class $CatalogCacheEntriesTable extends CatalogCacheEntries
+    with TableInfo<$CatalogCacheEntriesTable, CatalogCacheEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CatalogCacheEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _internalIdMeta = const VerificationMeta(
+    'internalId',
+  );
+  @override
+  late final GeneratedColumn<String> internalId = GeneratedColumn<String>(
+    'internal_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [internalId, payload, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'catalog_cache_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CatalogCacheEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('internal_id')) {
+      context.handle(
+        _internalIdMeta,
+        internalId.isAcceptableOrUnknown(data['internal_id']!, _internalIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_internalIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {internalId};
+  @override
+  CatalogCacheEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CatalogCacheEntry(
+      internalId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}internal_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CatalogCacheEntriesTable createAlias(String alias) {
+    return $CatalogCacheEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class CatalogCacheEntry extends DataClass
+    implements Insertable<CatalogCacheEntry> {
+  /// 形如 `bili:46089` / `anilist:154587`
+  final String internalId;
+  final String payload;
+  final DateTime updatedAt;
+  const CatalogCacheEntry({
+    required this.internalId,
+    required this.payload,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['internal_id'] = Variable<String>(internalId);
+    map['payload'] = Variable<String>(payload);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CatalogCacheEntriesCompanion toCompanion(bool nullToAbsent) {
+    return CatalogCacheEntriesCompanion(
+      internalId: Value(internalId),
+      payload: Value(payload),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CatalogCacheEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CatalogCacheEntry(
+      internalId: serializer.fromJson<String>(json['internalId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'internalId': serializer.toJson<String>(internalId),
+      'payload': serializer.toJson<String>(payload),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CatalogCacheEntry copyWith({
+    String? internalId,
+    String? payload,
+    DateTime? updatedAt,
+  }) => CatalogCacheEntry(
+    internalId: internalId ?? this.internalId,
+    payload: payload ?? this.payload,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  CatalogCacheEntry copyWithCompanion(CatalogCacheEntriesCompanion data) {
+    return CatalogCacheEntry(
+      internalId: data.internalId.present
+          ? data.internalId.value
+          : this.internalId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CatalogCacheEntry(')
+          ..write('internalId: $internalId, ')
+          ..write('payload: $payload, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(internalId, payload, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CatalogCacheEntry &&
+          other.internalId == this.internalId &&
+          other.payload == this.payload &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CatalogCacheEntriesCompanion extends UpdateCompanion<CatalogCacheEntry> {
+  final Value<String> internalId;
+  final Value<String> payload;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CatalogCacheEntriesCompanion({
+    this.internalId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CatalogCacheEntriesCompanion.insert({
+    required String internalId,
+    required String payload,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : internalId = Value(internalId),
+       payload = Value(payload),
+       updatedAt = Value(updatedAt);
+  static Insertable<CatalogCacheEntry> custom({
+    Expression<String>? internalId,
+    Expression<String>? payload,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (internalId != null) 'internal_id': internalId,
+      if (payload != null) 'payload': payload,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CatalogCacheEntriesCompanion copyWith({
+    Value<String>? internalId,
+    Value<String>? payload,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CatalogCacheEntriesCompanion(
+      internalId: internalId ?? this.internalId,
+      payload: payload ?? this.payload,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (internalId.present) {
+      map['internal_id'] = Variable<String>(internalId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CatalogCacheEntriesCompanion(')
+          ..write('internalId: $internalId, ')
+          ..write('payload: $payload, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1129,6 +1402,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $SettingEntriesTable settingEntries = $SettingEntriesTable(this);
+  late final $CatalogCacheEntriesTable catalogCacheEntries =
+      $CatalogCacheEntriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1137,6 +1412,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     historyEntries,
     favoriteEntries,
     settingEntries,
+    catalogCacheEntries,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -1792,6 +2068,197 @@ typedef $$SettingEntriesTableProcessedTableManager =
       SettingEntry,
       PrefetchHooks Function()
     >;
+typedef $$CatalogCacheEntriesTableCreateCompanionBuilder =
+    CatalogCacheEntriesCompanion Function({
+      required String internalId,
+      required String payload,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CatalogCacheEntriesTableUpdateCompanionBuilder =
+    CatalogCacheEntriesCompanion Function({
+      Value<String> internalId,
+      Value<String> payload,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$CatalogCacheEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CatalogCacheEntriesTable> {
+  $$CatalogCacheEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get internalId => $composableBuilder(
+    column: $table.internalId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CatalogCacheEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CatalogCacheEntriesTable> {
+  $$CatalogCacheEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get internalId => $composableBuilder(
+    column: $table.internalId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CatalogCacheEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CatalogCacheEntriesTable> {
+  $$CatalogCacheEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get internalId => $composableBuilder(
+    column: $table.internalId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CatalogCacheEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CatalogCacheEntriesTable,
+          CatalogCacheEntry,
+          $$CatalogCacheEntriesTableFilterComposer,
+          $$CatalogCacheEntriesTableOrderingComposer,
+          $$CatalogCacheEntriesTableAnnotationComposer,
+          $$CatalogCacheEntriesTableCreateCompanionBuilder,
+          $$CatalogCacheEntriesTableUpdateCompanionBuilder,
+          (
+            CatalogCacheEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $CatalogCacheEntriesTable,
+              CatalogCacheEntry
+            >,
+          ),
+          CatalogCacheEntry,
+          PrefetchHooks Function()
+        > {
+  $$CatalogCacheEntriesTableTableManager(
+    _$AppDatabase db,
+    $CatalogCacheEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CatalogCacheEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CatalogCacheEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$CatalogCacheEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> internalId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CatalogCacheEntriesCompanion(
+                internalId: internalId,
+                payload: payload,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String internalId,
+                required String payload,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CatalogCacheEntriesCompanion.insert(
+                internalId: internalId,
+                payload: payload,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$CatalogCacheEntriesTable, CatalogCacheEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CatalogCacheEntriesTable,
+                    CatalogCacheEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CatalogCacheEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CatalogCacheEntriesTable,
+      CatalogCacheEntry,
+      $$CatalogCacheEntriesTableFilterComposer,
+      $$CatalogCacheEntriesTableOrderingComposer,
+      $$CatalogCacheEntriesTableAnnotationComposer,
+      $$CatalogCacheEntriesTableCreateCompanionBuilder,
+      $$CatalogCacheEntriesTableUpdateCompanionBuilder,
+      (
+        CatalogCacheEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $CatalogCacheEntriesTable,
+          CatalogCacheEntry
+        >,
+      ),
+      CatalogCacheEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1802,4 +2269,6 @@ class $AppDatabaseManager {
       $$FavoriteEntriesTableTableManager(_db, _db.favoriteEntries);
   $$SettingEntriesTableTableManager get settingEntries =>
       $$SettingEntriesTableTableManager(_db, _db.settingEntries);
+  $$CatalogCacheEntriesTableTableManager get catalogCacheEntries =>
+      $$CatalogCacheEntriesTableTableManager(_db, _db.catalogCacheEntries);
 }

@@ -43,7 +43,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('按分类、年份、地区浏览番剧'), findsOneWidget);
+    expect(find.text('按排序、连载状态浏览（年份筛选接口不支持，已移除）'), findsOneWidget);
     expect(find.byType(ChoiceChip), findsWidgets);
 
     await shutdownApp(tester);
