@@ -8,9 +8,10 @@ import '../data/danmaku_models.dart';
 /// 弹幕渲染层（自绘）。
 ///
 /// 设计要点：
-/// - 位置由外部传入的 `position` 驱动，内部用 Ticker 插值，保证暂停/倍速都平滑；
-/// - 轨道分配是"增量式"的：新弹幕进来时找一条尾部已清空的轨道，找不到就丢弃（同屏上限）；
-/// - seek（位置大幅跳变）时整体重建，避免残留。
+/// - 位置由外部 `position` 驱动，内部用 Ticker 插值，暂停/倍速都平滑；
+/// - 滚动弹幕、顶部弹幕、底部弹幕**各自独立分配轨道**，互不重叠；
+/// - 滚动时长 = 基准 / (滚动速度 × 播放倍速)，所以"跟随倍速"时弹幕也会更快；
+/// - seek（位置大幅跳变）整体重建，避免残留。
 class DanmakuOverlay extends StatefulWidget {
   const DanmakuOverlay({
     super.key,
@@ -35,21 +36,15 @@ class DanmakuOverlay extends StatefulWidget {
   });
 
   final List<DanmakuItem> items;
-
-  /// 播放器当前进度。
   final Duration position;
   final bool playing;
   final double playbackRate;
-
-  /// 0~1。
   final double opacity;
   final double fontSize;
 
   /// 滚动速度倍率（越大越快）。
   final double speedFactor;
   final int maxOnScreen;
-
-  /// 屏蔽词正则（已拼接）。
   final RegExp? blockedPattern;
   final bool enabled;
   final bool showScroll;
@@ -84,33 +79,46 @@ class _DanmakuLine {
     required this.lane,
     required this.width,
     required this.startMs,
+    required this.travelMs,
   });
 
   final DanmakuItem item;
   final int lane;
   final double width;
   final int startMs;
+  final int travelMs;
 
-  /// 完全离开屏幕的时间（毫秒，弹幕时间轴）。
-  int get endMs => startMs + _DanmakuOverlayState.travelMs;
+  int get endMs => startMs + travelMs;
 }
 
 class _DanmakuOverlayState extends State<DanmakuOverlay>
     with SingleTickerProviderStateMixin {
-  static const int travelMs = 8000;
+  static const int baseTravelMs = 8000;
 
   late final Ticker _ticker;
   final List<_DanmakuLine> _lines = [];
   final Map<String, TextPainter> _measureCache = {};
 
-  /// 已经调度到第几条。
-  int _cursor = 0;
+  /// 带颜色/描边的最终 TextPainter 缓存。每帧重排文字是主要 CPU 开销。
+  final Map<String, _PaintedText> _paintCache = {};
 
-  /// 上一次对齐的播放位置（用于 seek 检测）。
+  int _cursor = 0;
   Duration _lastPosition = Duration.zero;
   DateTime _lastSyncAt = DateTime.now();
   double _interpMs = 0;
   int _laneCount = 12;
+
+  /// 只让 CustomPaint 重绘，不重建整棵子树。
+  final ValueNotifier<int> _repaint = ValueNotifier<int>(0);
+  int _lastRepaintMs = 0;
+  int _tickCount = 0;
+
+  /// 当前滚动时长（受滚动速度与播放倍速影响）。
+  int get _travelMs {
+    final factor =
+        math.max(0.1, widget.speedFactor * math.max(0.25, widget.playbackRate));
+    return (baseTravelMs / factor).round().clamp(1200, 40000);
+  }
 
   @override
   void initState() {
@@ -121,13 +129,11 @@ class _DanmakuOverlayState extends State<DanmakuOverlay>
   @override
   void didUpdateWidget(DanmakuOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // seek：位置跳变超过 3 秒（或往回），整体重建
     final delta = widget.position.inMilliseconds - _lastPosition.inMilliseconds;
     if (delta.abs() > 3000 || delta < -500) {
       _reset(widget.position);
     }
-    if (widget.position.inMilliseconds !=
-        _lastPosition.inMilliseconds) {
+    if (widget.position.inMilliseconds != _lastPosition.inMilliseconds) {
       _lastPosition = widget.position;
       _lastSyncAt = DateTime.now();
     }
@@ -139,71 +145,66 @@ class _DanmakuOverlayState extends State<DanmakuOverlay>
   void _reset(Duration position) {
     _lines.clear();
     _measureCache.clear();
+    _paintCache.clear();
     _cursor = 0;
     _lastPosition = position;
     _lastSyncAt = DateTime.now();
     _interpMs = position.inMilliseconds.toDouble();
-    // 把游标推到当前位置之前
     while (_cursor < widget.items.length &&
         widget.items[_cursor].timeMs < _interpMs) {
       _cursor++;
     }
   }
 
-  void _onTick(Duration _) {
+  void _onTick(Duration elapsed) {
     if (!widget.enabled || widget.items.isEmpty) return;
-    final now = DateTime.now();
-    final elapsedMs = now.difference(_lastSyncAt).inMilliseconds;
+    final elapsedMs = DateTime.now().difference(_lastSyncAt).inMilliseconds;
     _interpMs = _lastPosition.inMilliseconds +
         (widget.playing ? elapsedMs * widget.playbackRate : 0);
 
     _schedule();
     _prune();
 
-    if (mounted) setState(() {});
+    // 30fps 重绘即可，弹幕移动肉眼看不出 60fps 差异
+    final nowMs = elapsed.inMilliseconds;
+    if (nowMs - _lastRepaintMs < 33) return;
+    _lastRepaintMs = nowMs;
+    _tickCount++;
+    if (mounted) _repaint.value = _tickCount;
   }
 
+  int get _effectiveLimit =>
+      (widget.maxOnScreen * widget.density).clamp(10, widget.maxOnScreen).round();
+
   void _schedule() {
-    final untilMs = _interpMs;
     while (_cursor < widget.items.length) {
       final item = widget.items[_cursor];
-      if (item.timeMs > untilMs) break;
-      if (widget.blockedPattern?.hasMatch(item.text) ?? false) {
-        _cursor++;
-        continue;
-      }
-      if (!widget.allows(item.mode)) {
-        _cursor++;
-        continue;
-      }
-      if (_lines.length >= _effectiveLimit) {
-        _cursor++;
-        continue;
-      }
-      final lane = _findLane(item.timeMs);
-      if (lane == null) {
-        _cursor++;
-        continue;
-      }
+      if (item.timeMs > _interpMs) break;
+      _cursor++;
+
+      if (widget.blockedPattern?.hasMatch(item.text) ?? false) continue;
+      if (!widget.allows(item.mode)) continue;
+      if (_lines.length >= _effectiveLimit) continue;
+
+      final lane = _findLane(item.timeMs, item.mode);
+      if (lane == null) continue;
+
       final painter = _measure(item.text);
       _lines.add(_DanmakuLine(
         item: item,
         lane: lane,
         width: painter.width,
         startMs: item.timeMs,
+        travelMs: _travelMs,
       ));
-      _cursor++;
     }
   }
 
-  int get _effectiveLimit =>
-      (widget.maxOnScreen * widget.density).clamp(10, widget.maxOnScreen).round();
-
-  int? _findLane(int startMs) {
+  int? _findLane(int startMs, DanmakuMode mode) {
     for (var lane = 0; lane < _laneCount; lane++) {
       var occupied = false;
       for (final line in _lines) {
-        if (line.lane != lane) continue;
+        if (line.item.mode != mode || line.lane != lane) continue;
         if (line.endMs > startMs) {
           occupied = true;
           break;
@@ -216,6 +217,40 @@ class _DanmakuOverlayState extends State<DanmakuOverlay>
 
   void _prune() {
     _lines.removeWhere((line) => line.endMs <= _interpMs);
+  }
+
+  _PaintedText _paint(DanmakuItem item) {
+    final key = '${item.text}|${item.color}|${widget.opacity}|${widget.outlineWidth}';
+    final cached = _paintCache[key];
+    if (cached != null) return cached;
+
+    final base = _measure(item.text);
+    final style = base.text?.style;
+    final text = base.text?.toPlainText() ?? '';
+    final color = Color(0xFF000000 | item.color)
+        .withValues(alpha: widget.opacity);
+    final main = TextPainter(
+      text: TextSpan(text: text, style: style?.copyWith(color: color)),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    TextPainter? outline;
+    if (widget.outlineWidth > 0) {
+      outline = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: style?.copyWith(
+            color: Colors.black.withValues(alpha: widget.opacity * 0.9),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+    }
+    final painted = _PaintedText(main: main, outline: outline);
+    if (_paintCache.length > 800) _paintCache.clear();
+    _paintCache[key] = painted;
+    return painted;
   }
 
   TextPainter _measure(String text) {
@@ -241,6 +276,7 @@ class _DanmakuOverlayState extends State<DanmakuOverlay>
   @override
   void dispose() {
     _ticker.dispose();
+    _repaint.dispose();
     super.dispose();
   }
 
@@ -254,19 +290,23 @@ class _DanmakuOverlayState extends State<DanmakuOverlay>
             widget.bottomMargin;
         _laneCount = math.max(1, (usable / (widget.fontSize + 14)).floor());
         return IgnorePointer(
-          child: CustomPaint(
-            painter: _DanmakuPainter(
-              lines: _lines,
+          child: RepaintBoundary(
+            child: CustomPaint(
+              painter: _DanmakuPainter(
+                repaint: _repaint,
+                lines: _lines,
               nowMs: _interpMs,
               width: constraints.maxWidth,
               fontSize: widget.fontSize,
               opacity: widget.opacity,
               measure: _measure,
-              topMargin: widget.topMargin,
-              bottomMargin: widget.bottomMargin,
-              outlineWidth: widget.outlineWidth,
+              paintedText: _paint,
+                topMargin: widget.topMargin,
+                bottomMargin: widget.bottomMargin,
+                outlineWidth: widget.outlineWidth,
+              ),
+              size: Size.infinite,
             ),
-            size: Size.infinite,
           ),
         );
       },
@@ -276,16 +316,18 @@ class _DanmakuOverlayState extends State<DanmakuOverlay>
 
 class _DanmakuPainter extends CustomPainter {
   _DanmakuPainter({
+    required Listenable repaint,
     required this.lines,
     required this.nowMs,
     required this.width,
     required this.fontSize,
     required this.opacity,
     required this.measure,
+    required this.paintedText,
     required this.topMargin,
     required this.bottomMargin,
     required this.outlineWidth,
-  });
+  }) : super(repaint: repaint);
 
   final List<_DanmakuLine> lines;
   final double nowMs;
@@ -293,6 +335,7 @@ class _DanmakuPainter extends CustomPainter {
   final double fontSize;
   final double opacity;
   final TextPainter Function(String) measure;
+  final _PaintedText Function(DanmakuItem) paintedText;
   final double topMargin;
   final double bottomMargin;
   final double outlineWidth;
@@ -304,72 +347,49 @@ class _DanmakuPainter extends CustomPainter {
     final topPadding = topMargin + 8;
 
     for (final line in lines) {
-      final progress = (nowMs - line.startMs) / _DanmakuOverlayState.travelMs;
+      final progress =
+          (nowMs - line.startMs) / line.travelMs;
       if (progress < 0 || progress > 1) continue;
 
-      final painter = measure(line.item.text);
-      final color = Color(0xFF000000 | line.item.color)
-          .withValues(alpha: opacity);
+      final painted = paintedText(line.item);
 
       switch (line.item.mode) {
         case DanmakuMode.scroll:
           final x = width - (width + line.width) * progress;
           final y = topPadding + line.lane * laneHeight;
-          _drawWithShadow(canvas, painter, color, Offset(x, y));
+          _draw(canvas, painted, Offset(x, y));
           break;
         case DanmakuMode.top:
           final x = (width - line.width) / 2;
-          _drawWithShadow(canvas, painter, color, Offset(x, topPadding));
+          final y = topPadding + line.lane * laneHeight;
+          _draw(canvas, painted, Offset(x, y));
           break;
         case DanmakuMode.bottom:
           final x = (width - line.width) / 2;
-          final y = size.height - (fontSize + 12) - topPadding - bottomMargin;
-          _drawWithShadow(canvas, painter, color, Offset(x, y));
+          final y = size.height -
+              bottomMargin -
+              topPadding -
+              (line.lane + 1) * laneHeight;
+          _draw(canvas, painted, Offset(x, y));
           break;
       }
     }
   }
 
-  void _drawWithShadow(
-    Canvas canvas,
-    TextPainter painter,
-    Color color,
-    Offset offset,
-  ) {
-    if (outlineWidth <= 0) {
-      final only = TextPainter(
-        text: TextSpan(
-          text: painter.text?.toPlainText() ?? '',
-          style: painter.text?.style?.copyWith(color: color),
-        ),
-        textDirection: TextDirection.ltr,
-        maxLines: 1,
-      )..layout();
-      only.paint(canvas, offset);
-      return;
+  void _draw(Canvas canvas, _PaintedText painted, Offset offset) {
+    if (painted.outline != null) {
+      painted.outline!.paint(canvas, offset + Offset(outlineWidth, outlineWidth));
     }
-    final shadow = TextPainter(
-      text: TextSpan(
-        text: painter.text?.toPlainText() ?? '',
-        style: painter.text?.style?.copyWith(
-          color: Colors.black.withValues(alpha: opacity * 0.9),
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    )..layout();
-    shadow.paint(canvas, offset + Offset(outlineWidth, outlineWidth));
-    final real = TextPainter(
-      text: TextSpan(
-        text: painter.text?.toPlainText() ?? '',
-        style: painter.text?.style?.copyWith(color: color),
-      ),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    )..layout();
-    real.paint(canvas, offset);
+    painted.main.paint(canvas, offset);
   }
 
   @override
-  bool shouldRepaint(_DanmakuPainter oldDelegate) => true;
+  bool shouldRepaint(_DanmakuPainter oldDelegate) => false;
+}
+
+class _PaintedText {
+  _PaintedText({required this.main, this.outline});
+
+  final TextPainter main;
+  final TextPainter? outline;
 }
