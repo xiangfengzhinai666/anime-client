@@ -142,7 +142,19 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
         .listen((v) => setState(() => _volume = v)));
     _subs.add(_player.stream.rate.listen((v) => setState(() => _speed = v)));
     _subs.add(_player.stream.completed.listen((value) {
-      if (mounted) setState(() => _completed = value);
+      if (!mounted) return;
+      if (!value) {
+        setState(() => _completed = false);
+        return;
+      }
+      // 自动连播：设置里开着、且有下一集，就直接切过去
+      final autoNext = ref.read(autoPlayNextProvider);
+      if (autoNext && _hasNext) {
+        _completed = false;
+        _gotoEpisode(_episodeIndex + 1);
+        return;
+      }
+      setState(() => _completed = true);
     }));
     _subs.add(_player.stream.error.listen((e) {
       if (e.trim().isEmpty) return;

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers/app_providers.dart';
+import '../../core/storage/app_database.dart';
 import '../../app/theme/app_tokens.dart';
 import '../../app/widgets/empty_state.dart';
 import '../../app/widgets/page_scaffold.dart';
@@ -100,9 +101,11 @@ class HomePage extends ConsumerWidget {
                   ),
                 );
               }
+              // 同一部番只保留"最近看的那一集"
+              final latest = latestPerShow(items);
               return Column(
                 children: [
-                  for (final item in items.take(3))
+                  for (final item in latest.take(3))
                     _HistoryRow(
                       title: item.title.isEmpty
                           ? '番剧 ${item.bangumiId}'
@@ -301,4 +304,14 @@ class _HistoryRow extends StatelessWidget {
     );
   }
 
+}
+
+/// 同一部番只保留最近的一条观看记录（输入需按时间倒序）。
+List<HistoryEntry> latestPerShow(List<HistoryEntry> items) {
+  final seen = <int>{};
+  final out = <HistoryEntry>[];
+  for (final item in items) {
+    if (seen.add(item.bangumiId)) out.add(item);
+  }
+  return out;
 }

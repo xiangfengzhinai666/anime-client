@@ -244,7 +244,26 @@ GET https://s.search.bilibili.com/main/suggest?term=clann&main_ver=v1
 
 截图：`docs/assets/s4/8-search-fuzzy.png`。
 
-## 十四、下一步（拿到 key 后）
+
+## 十四、S4.8 继续观看去重 + 自动连播
+
+### 1. 继续观看：一部番只留一条
+
+原来首页会把同一部番的每一集都列出来（《学生会也有洞！》第 2 集 + 第 1 集两条），
+现在按 `bangumiId` 去重，只保留**最近看的那一集**（历史本来就按时间倒序）。
+
+### 2. 自动连播（可在设置里关）
+
+- 设置 → 播放 → **自动连播下一集**（默认开）；
+- 播放页监听 `completed`：开启且有下一集时直接切下一集，不再停在最后一帧；
+- 关闭后恢复「本集播放结束」面板（重播 / 下一集 / 返回）。
+
+### 验收
+
+- 105 个测试全绿（新增 `latestPerShow` 去重用例）；
+- 设置开关持久化在 settings 表（key `play.autoNext`），重启保持。
+
+## 十五、下一步（拿到 key 后）
 
 1. **弹弹play**：实现 `X-AppId`/`X-Timestamp`/`X-Signature` 签名，接入搜索 + 弹幕；
 2. 港澳台：优先走弹弹play（他们覆盖港澳台）；

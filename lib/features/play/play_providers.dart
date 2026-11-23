@@ -125,3 +125,38 @@ String sessionLabel(CycaniSession? session) {
 
 /// 便于测试与调试：当前源。
 const CatalogSource playSource = CatalogSource.cycani;
+
+/// 播放偏好：自动连播下一集（默认开）。
+///
+/// 存在 settings 表（key: play.autoNext），重启后保持。
+class AutoNextNotifier extends StateNotifier<bool> {
+  AutoNextNotifier(this._ref) : super(true) {
+    _load();
+  }
+
+  final Ref _ref;
+  static const String _key = 'play.autoNext';
+
+  Future<void> _load() async {
+    try {
+      final raw = await _ref.read(settingsDaoProvider).get(_key);
+      if (raw != null && mounted) state = raw == 'true';
+    } catch (_) {
+      // 读失败就用默认值
+    }
+  }
+
+  Future<void> set(bool value) async {
+    state = value;
+    try {
+      await _ref.read(settingsDaoProvider).set(_key, value.toString());
+    } catch (_) {
+      // 写失败不影响本次会话
+    }
+  }
+}
+
+final autoPlayNextProvider =
+    StateNotifierProvider<AutoNextNotifier, bool>((ref) {
+  return AutoNextNotifier(ref);
+});

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:anime_client/core/storage/app_database.dart';
+import 'package:anime_client/features/home/home_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'test_helpers.dart';
@@ -96,5 +98,28 @@ void main() {
     });
 
     await shutdownApp(tester);
+  });
+
+  test('继续观看：同一部番只保留最新一集', () {
+    HistoryEntry row(int id, int ep, String title) => HistoryEntry(
+          bangumiId: id,
+          episode: ep,
+          title: title,
+          episodeTitle: '第 $ep 集',
+          cover: '',
+          positionSeconds: 100,
+          durationSeconds: 1000,
+          updatedAt: DateTime(2026, 11, 23, 20, ep),
+        );
+
+    final items = [
+      row(3943, 2, '学生会也有洞！'),
+      row(3943, 1, '学生会也有洞！'),
+      row(2109, 1, '孤独摇滚！'),
+    ];
+    final latest = latestPerShow(items);
+    expect(latest.length, 2);
+    expect(latest.first.episode, 2);
+    expect(latest.last.title, '孤独摇滚！');
   });
 }

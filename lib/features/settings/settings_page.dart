@@ -85,7 +85,15 @@ class SettingsPage extends ConsumerWidget {
                 title: '播放',
                 description: '不需要账号也能播放本地文件',
               ),
-              _Card(child: const _LocalFileTile()),
+              _Card(
+                child: Column(
+                  children: [
+                    const _AutoNextTile(),
+                    const Divider(height: 1),
+                    const _LocalFileTile(),
+                  ],
+                ),
+              ),
               const SizedBox(height: AppSpacing.xl),
               const SectionHeader(title: '数据', description: '全部保存在本机'),
               _Card(
@@ -593,6 +601,22 @@ class _SliderRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 自动连播开关。
+class _AutoNextTile extends ConsumerWidget {
+  const _AutoNextTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final autoNext = ref.watch(autoPlayNextProvider);
+    return SwitchListTile(
+      value: autoNext,
+      onChanged: (value) => ref.read(autoPlayNextProvider.notifier).set(value),
+      title: const Text('自动连播下一集'),
+      subtitle: const Text('一集播完自动播放下一集；关闭后显示「重播 / 下一集」面板'),
     );
   }
 }
