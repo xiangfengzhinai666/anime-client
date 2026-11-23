@@ -165,4 +165,18 @@ void main() {
     expect(distinct.length, 1);
     expect(distinct.single.title, '孤独摇滚');
   });
+
+  test('CLANNAD 系列：TV 与 AFTER STORY 不会被误判为重复', () {
+    final merged = CatalogMerger.merge(
+      [
+        _bili(title: 'CLANNAD ~AFTER STORY~另一个世界 杏篇', year: 2009, eps: 1),
+        _bili(title: 'CLANNAD ~AFTER STORY~', year: 2008, eps: 23),
+        _bili(title: 'CLANNAD 另一个世界 智代篇', year: 2008, eps: 1),
+        _bili(title: 'CLANNAD', year: 2007, eps: 23),
+      ],
+      [_ani(title: 'Clannad Movie', year: 2007, eps: 1)],
+    );
+    expect(merged.length, 5);
+    expect(merged.map((e) => e.title), contains('CLANNAD'));
+  });
 }

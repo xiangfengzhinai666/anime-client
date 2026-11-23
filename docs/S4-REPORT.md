@@ -216,7 +216,35 @@ AniList 的标题是 `Shin Seiki Evangelion` / `Evangelion Shin Movie: Jo`，
 
 代价：扩展词会多发 2–6 个请求（只在第一页），实测首屏仍在 1.5s 内。
 
-## 十三、下一步（拿到 key 后）
+
+## 十三、S4.7 模糊搜索（"clann" → CLANNAD）
+
+用户反馈：名字没打全（`clann`）就一条都搜不到，希望能找到相近的番。
+
+**处理**：用 B 站公开的搜索联想接口做兜底：
+
+```
+GET https://s.search.bilibili.com/main/suggest?term=clann&main_ver=v1
+→ tag[].value: clannad / clannad第一季 / clannad第二季
+```
+
+- 只在**原词结果为 0** 时触发（不增加正常搜索的延迟）；
+- 只接受"以输入开头"的建议，挡住「巨人 → 巨人网络」这类噪音；
+- 最多用前 2 个建议各查一次两源，合并去重。
+
+**效果**：`clann` → **5 条** CLANNAD 系列（TV 2007 / AFTER STORY 2008 / 两个 OVA / 剧场版）。
+
+### 顺带修掉一个去重 bug（这条更关键）
+
+`CLANNAD`（2007, 23 集）和 `CLANNAD ~AFTER STORY~`（2008, 23 集）被误判为同一部，
+导致 **TV 版整条被吃掉**——因为旧规则里"标题包含 + 集数相同"就算重复。
+
+修法：**包含关系只在同年才成立**。
+`CLANNAD` vs `~AFTER STORY~` 年份不同 → 不合并；TV 保住了。
+
+截图：`docs/assets/s4/8-search-fuzzy.png`。
+
+## 十四、下一步（拿到 key 后）
 
 1. **弹弹play**：实现 `X-AppId`/`X-Timestamp`/`X-Signature` 签名，接入搜索 + 弹幕；
 2. 港澳台：优先走弹弹play（他们覆盖港澳台）；

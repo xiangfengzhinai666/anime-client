@@ -95,11 +95,38 @@ class CatalogRepositoryImpl implements CatalogRepository {
     // 例：B 站只有「芙莉莲」S1，AniList 能补出 S2 / 迷你动画。
     final bridged = page == 1 ? await _bridgeSeasons(biliPage.items) : const <AnimeSummary>[];
 
-    final merged = CatalogMerger.merge(
+    var merged = CatalogMerger.merge(
       biliPage.items,
       [...aniListPage.items, ...expanded, ...bridged],
       trace: (message) => logger.debug('merge', message),
     );
+
+    // 兜底：一个字都没搜到时，用 B 站联想纠错（"clann" → "clannad"）
+    if (merged.isEmpty && page == 1) {
+      final suggestions = await _suggestQueries(kw);
+      if (suggestions.isNotEmpty) {
+        logger.debug('catalog', '搜索「$kw」无结果，尝试联想：$suggestions');
+        final retried = <Future<CatalogPage>>[];
+        for (final suggestion in suggestions.take(2)) {
+          retried.add(_safeBiliSearch(suggestion, 1));
+          retried.add(_safeAniListSearch(suggestion, 1));
+        }
+        final pages = await Future.wait(retried);
+        final rescued = <AnimeSummary>[];
+        for (final result in pages) {
+          rescued.addAll(result.items);
+        }
+        logger.debug(
+          'catalog',
+          '联想救回：${rescued.map((e) => '${e.title}(${e.year})').join(' / ')}',
+        );
+        merged = CatalogMerger.merge(
+          const [],
+          rescued,
+          trace: (message) => logger.debug('merge', message),
+        );
+      }
+    }
     logger.debug(
       'merge',
       '主源 ${biliPage.items.length} 条 → 合并后 ${merged.length} 条',
@@ -110,6 +137,15 @@ class CatalogRepositoryImpl implements CatalogRepository {
       page: page,
       hasMore: biliPage.hasMore || aniListPage.hasMore,
     );
+  }
+
+  Future<List<String>> _suggestQueries(String keyword) async {
+    try {
+      return await bili.suggest(keyword);
+    } catch (e) {
+      logger.debug('catalog', '联想失败（$keyword）：$e');
+      return const [];
+    }
   }
 
   Future<CatalogPage> _safeBiliSearch(String keyword, int page) async {

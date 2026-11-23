@@ -276,6 +276,13 @@ class TitleMatcher {
     final contains = a.contains(b) || b.contains(a);
     if (!equal && !contains) return false;
 
+    // 「包含关系」比「完全相同」危险得多：
+    // CLANNAD 与 CLANNAD ~AFTER STORY~ 集数都是 23，曾经因此被误合并，TV 被吃掉。
+    // 只有同年才允许靠包含关系判重。
+    if (!equal && yearA != null && yearB != null && yearA != yearB) {
+      return false;
+    }
+
     final yearGap =
         (yearA != null && yearB != null) ? (yearA - yearB).abs() : 0;
     if (yearGap > 1) return false;

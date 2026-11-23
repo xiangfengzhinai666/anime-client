@@ -111,6 +111,41 @@ class BiliCatalog {
     return parseDetail(result, seasonId);
   }
 
+  // ---------------------------------------------------------------- 联想
+
+  /// B 站搜索联想（模糊）：输入 "clann" 会给 "clannad"。
+  ///
+  /// 用公开的 suggest 接口，不需要签名：
+  /// `https://s.search.bilibili.com/main/suggest?term=xxx&main_ver=v1`
+  Future<List<String>> suggest(String keyword) async {
+    final json = await _client.getJson(
+      'https://s.search.bilibili.com/main/suggest',
+      query: {'term': keyword, 'main_ver': 'v1'},
+      headers: const {'Referer': 'https://www.bilibili.com/'},
+      tag: 'bili-suggest',
+    );
+
+    final result = json['result'];
+    if (result is! Map) return const [];
+    final tags = result['tag'];
+    if (tags is! List) return const [];
+
+    final query = keyword.trim().toLowerCase();
+    final out = <String>[];
+    for (final raw in tags) {
+      if (raw is! Map) continue;
+      final value = '${raw['value'] ?? raw['term'] ?? ''}'.trim();
+      if (value.isEmpty || out.contains(value)) continue;
+      // 只要"以输入开头"的建议，避免"巨人"搜出"巨人网络"这种噪音
+      final lower = value.toLowerCase();
+      if (lower.startsWith(query) || query.startsWith(lower)) {
+        out.add(value);
+      }
+      if (out.length >= 3) break;
+    }
+    return out;
+  }
+
   // ---------------------------------------------------------------- 解析
 
   /// 解析搜索项（公开以便测试直接喂 fixture）。
