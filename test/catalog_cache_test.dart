@@ -39,6 +39,8 @@ void main() {
   test('prune 清理过期缓存，clear 清空', () async {
     await cache.put('bili:1', {'a': 1});
     await cache.put('bili:2', {'a': 2});
+    // 等几毫秒，确保写入时间严格早于 prune 的 cutoff（否则同毫秒内会判不过期）
+    await Future<void>.delayed(const Duration(milliseconds: 5));
 
     // 全部视为过期
     final removed = await cache.prune(olderThan: Duration.zero);
