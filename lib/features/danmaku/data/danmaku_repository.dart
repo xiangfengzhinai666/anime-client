@@ -210,6 +210,7 @@ class DanmakuRepository {
         }
 
         for (final candidate in ranked.take(4)) {
+          if (!isReliableMatch(summary, candidate)) continue;
           final cid = await _tryBilibiliSeason(candidate.sourceId, episodeIndex);
           if (cid != null) {
             seasonId = candidate.sourceId;

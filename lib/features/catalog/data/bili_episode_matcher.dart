@@ -59,6 +59,13 @@ class BiliEpisodeMatcher {
       ..sort((a, b) => matchScore(summary, b).compareTo(matchScore(summary, a)));
 
     for (final candidate in ranked.take(4)) {
+      if (!isReliableMatch(summary, candidate)) {
+        _logger.debug(
+          'matcher',
+          '跳过不可信匹配「${candidate.title}」(year=${candidate.year})',
+        );
+        continue;
+      }
       try {
         final detail = await _bili.detail(candidate.sourceId);
         if (detail.episodes.isEmpty) continue;

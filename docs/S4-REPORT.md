@@ -147,7 +147,48 @@
 
 截图：`docs/assets/s4/5-episode-cards-bili.png`（B 站条目也带日期了）。
 
-## 十一、下一步（拿到 key 后）
+
+## 十一、S4.5 单实例运行 + 匹配可信度门槛
+
+### 1. 单实例（避免 AniCh 那种 lock failed 弹窗）
+
+AniCh 开第二个实例会弹「ThemeSettingsStorage 错误 PathAccessException: lock failed」，
+本质是**两个进程抢同一个文件**。我们也一样会撞同一个 SQLite 库。
+
+处理：`windows/runner/main.cpp` 里用**命名互斥体**做单实例：
+
+```
+CreateMutexW(nullptr, TRUE, L"Local\\anime_client_single_instance")
+```
+
+- 已有实例 → `FindWindow` 找到主窗口 → 还原/置前 → **第二个进程直接退出**（不弹错误框）；
+- 实测：第二个实例 **84ms 内退出**，进程数保持 1。
+
+> 注意：main.cpp 的注释改成英文了 —— MSVC 默认按本地代码页编译，
+> 中文注释会触发 C4819 警告，而项目把警告当错误（C2220），直接编译失败。
+
+### 2. 标题匹配加了「可信度门槛」
+
+用户发现《学生会也有洞！》的剧集卡片配到了《学生会的一己之见》（2009/2012）的封面和日期。
+
+原因：只按"标题包含 + 集数"打分，年份差 14 年也照样被接受。
+
+处理：`isReliableMatch()` —— **年份差 > 2 直接否决**，分数低于 5 也不接受；
+分集卡片和弹幕的 B 站匹配都走这个门槛。
+
+实测日志：
+
+```
+[matcher] 跳过不可信匹配「学生会的一己之见」(year=2009)
+[matcher] 跳过不可信匹配「学生会的一己之见 Lv.2」(year=2012)
+[matcher] 跳过不可信匹配「Love Live! School Idol Project」(year=2013)
+```
+
+→ 没有可信匹配时降级为番剧封面，不再张冠李戴。
+
+截图：`docs/assets/s4/6-match-gate.png`。
+
+## 十二、下一步（拿到 key 后）
 
 1. **弹弹play**：实现 `X-AppId`/`X-Timestamp`/`X-Signature` 签名，接入搜索 + 弹幕；
 2. 港澳台：优先走弹弹play（他们覆盖港澳台）；

@@ -134,3 +134,12 @@ AnimeSummary? pickBestCandidate(
   }
   return best;
 }
+
+/// 匹配是否可信。用来挡住"学生会也有洞 → 学生会的一己之见"这种张冠李戴：
+/// 年份差超过 2 年直接否掉，分数太低也不接受。
+bool isReliableMatch(AnimeSummary wanted, AnimeSummary candidate) {
+  if (wanted.year != null && candidate.year != null) {
+    if ((wanted.year! - candidate.year!).abs() > 2) return false;
+  }
+  return matchScore(wanted, candidate) >= 5;
+}
