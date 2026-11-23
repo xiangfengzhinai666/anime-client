@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:win32/win32.dart';
 
 import '../../app/providers/app_providers.dart';
 import '../../app/theme/app_tokens.dart';
@@ -52,6 +53,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     required String episodeTitle,
   }) _saveProgress;
   late final AppLogger _log;
+  late final Widget _video;
 
   final List<StreamSubscription<dynamic>> _subs = [];
 
@@ -70,6 +72,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   double _speed = 1.0;
   double _speedBeforeHold = 1.0;
   bool _holdingFastForward = false;
+  Timer? _mousePoll;
 
   Timer? _hideTimer;
   Timer? _saveTimer;
@@ -88,11 +91,38 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     windowManager.addListener(this);
     _player = Player();
     _controller = VideoController(_player);
+    // 只创建一次：控件层频繁 setState 时不要重建 Video（重建纹理容易卡死）
+    _video = Video(
+      controller: _controller,
+      controls: NoVideoControls,
+      fit: BoxFit.contain,
+    );
     // 提前拿好保存函数：dispose 阶段再用 ref 会抛异常（导致进度没写进去）
     _saveProgress = ref.read(saveProgressProvider);
     _log = ref.read(appLoggerProvider);
     _bindPlayer();
     _load();
+    _startMousePolling();
+  }
+
+  /// 每 100ms 轮询一次鼠标右键状态。
+  ///
+  /// 不用 Flutter 的指针事件：窗口失焦或事件被上层控件吃掉时收不到，
+  /// 直接读系统按键状态最稳。仅当本窗口是前台窗口时才生效。
+  void _startMousePolling() {
+    _mousePoll?.cancel();
+    _mousePoll = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      if (!_ready || _error != null) return;
+      final down = (GetAsyncKeyState(0x02) & 0x8000) != 0; // VK_RBUTTON
+      // 不做焦点/悬停门槛：鼠标右键按下就快进，松开恢复。
+      // （窗口丢失焦点时 Flutter 收不到指针事件，这也是之前右键无效的原因）
+      final active = down;
+      if (active && !_holdingFastForward) {
+        _holdFastForward();
+      } else if (!active && _holdingFastForward) {
+        _releaseFastForward();
+      }
+    });
   }
 
   void _bindPlayer() {
@@ -257,6 +287,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
 
   @override
   void dispose() {
+    _mousePoll?.cancel();
     _hideTimer?.cancel();
     _saveTimer?.cancel();
     _save();
@@ -281,8 +312,17 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     });
   }
 
+  DateTime _lastShow = DateTime.fromMillisecondsSinceEpoch(0);
+
   void _showControls() {
-    setState(() => _controlsVisible = true);
+    final now = DateTime.now();
+    if (_controlsVisible &&
+        now.difference(_lastShow) < const Duration(milliseconds: 500)) {
+      _scheduleHide();
+      return;
+    }
+    _lastShow = now;
+    if (!_controlsVisible) setState(() => _controlsVisible = true);
     _scheduleHide();
   }
 
@@ -291,7 +331,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     if (_holdingFastForward) return;
     _holdingFastForward = true;
     _speedBeforeHold = _speed;
-    _log.debug('play', 'hold-right down: rate $_speed -> 2.0');
+    _log.debug('play', 'hold-right: 2.0x（原 $_speed）');
     await _player.setRate(2.0);
     if (mounted) setState(() {});
   }
@@ -300,7 +340,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     if (!_holdingFastForward) return;
     _holdingFastForward = false;
     final restored = _speedBeforeHold == 2.0 ? 1.0 : _speedBeforeHold;
-    _log.debug('play', 'hold-right up: rate -> $restored');
+    _log.debug('play', 'hold-right: 恢复 $restored x');
     await _player.setRate(restored);
     if (mounted) setState(() {});
   }
@@ -403,6 +443,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
             child: GestureDetector(
               onTap: _showControls,
               onDoubleTap: _toggleFullscreen,
+              onSecondaryTapDown: (_) => _holdFastForward(),
+              onSecondaryTapUp: (_) => _releaseFastForward(),
+              onSecondaryTapCancel: _releaseFastForward,
               child: Listener(
                 onPointerDown: (event) {
                   if ((event.buttons & kSecondaryMouseButton) != 0) {
@@ -417,11 +460,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
                 fit: StackFit.expand,
                 children: [
                   if (_ready)
-                    Video(
-                      controller: _controller,
-                      controls: NoVideoControls,
-                      fit: BoxFit.contain,
-                    )
+                    _video
                   else
                     const ColoredBox(color: Colors.black),
                   if (_buffering && _ready)
@@ -536,6 +575,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
       ),
     );
     if (picked != null) _gotoEpisode(picked);
+  }
+
+  @override
+  void onWindowBlur() {
+    // 失焦时松开快进，避免"按住右键切走窗口"后一直 2 倍速
+    _releaseFastForward();
   }
 
   @override

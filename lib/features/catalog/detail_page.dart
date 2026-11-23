@@ -46,9 +46,22 @@ Future<void> _playResolved(
   for (final title in candidates) {
     try {
       final page =
-          await ref.read(cycaniCatalogProvider).search(title, pageSize: 5);
-      if (page.items.isNotEmpty) {
-        targetId = page.items.first.id;
+          await ref.read(cycaniCatalogProvider).search(title, pageSize: 8);
+      if (page.items.isEmpty) continue;
+
+      // 不能直接取第一条：搜"路人女主"第一条可能是剧场版。
+      // 按「年份 + 集数 + 是否剧场版 + 标题相似度」打分挑最像的。
+      AnimeSummary? best;
+      var bestScore = -1 << 30;
+      for (final candidate in page.items) {
+        final score = _matchScore(summary, candidate);
+        if (score > bestScore) {
+          bestScore = score;
+          best = candidate;
+        }
+      }
+      if (best != null) {
+        targetId = best.id;
         break;
       }
     } catch (_) {
@@ -64,6 +77,45 @@ Future<void> _playResolved(
     return;
   }
   context.push('/watch/${Uri.encodeComponent(targetId)}/$episode');
+}
+
+/// 给候选条目打分：同年份、集数接近、非剧场版、标题相似 都得正分。
+int _matchScore(AnimeSummary wanted, AnimeSummary candidate) {
+  var score = 0;
+
+  // 剧场版/总集篇优先级最低
+  if (RegExp(r'剧场版|劇場版|剧场总集篇|Movie|The Movie|Fine|完结篇')
+      .hasMatch(candidate.title)) {
+    score -= 6;
+  }
+
+  if (wanted.year != null && candidate.year != null) {
+    final gap = (wanted.year! - candidate.year!).abs();
+    if (gap == 0) {
+      score += 5;
+    } else if (gap <= 1) {
+      score += 2;
+    } else {
+      score -= 4;
+    }
+  }
+
+  final wantedEpisodes = wanted.totalEpisodes ?? 0;
+  final candidateEpisodes = candidate.totalEpisodes ?? 0;
+  if (wantedEpisodes > 0 && candidateEpisodes > 0) {
+    if (wantedEpisodes == candidateEpisodes) {
+      score += 4;
+    } else if ((wantedEpisodes - candidateEpisodes).abs() <= 2) {
+      score += 1;
+    } else {
+      score -= 2;
+    }
+  }
+
+  if (TitleMatcher.similar(wanted.title, candidate.title)) score += 2;
+  if (wanted.title.trim() == candidate.title.trim()) score += 2;
+
+  return score;
 }
 
 class AnimeDetailPage extends ConsumerWidget {
