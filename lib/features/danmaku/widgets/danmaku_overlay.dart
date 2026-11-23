@@ -24,6 +24,14 @@ class DanmakuOverlay extends StatefulWidget {
     this.maxOnScreen = 80,
     this.blockedPattern,
     this.enabled = true,
+    this.showScroll = true,
+    this.showTop = true,
+    this.showBottom = true,
+    this.areaRatio = 1.0,
+    this.density = 1.0,
+    this.topMargin = 0,
+    this.bottomMargin = 0,
+    this.outlineWidth = 1.2,
   });
 
   final List<DanmakuItem> items;
@@ -44,6 +52,27 @@ class DanmakuOverlay extends StatefulWidget {
   /// 屏蔽词正则（已拼接）。
   final RegExp? blockedPattern;
   final bool enabled;
+  final bool showScroll;
+  final bool showTop;
+  final bool showBottom;
+
+  /// 弹幕区域占屏幕高度比例。
+  final double areaRatio;
+  final double density;
+  final double topMargin;
+  final double bottomMargin;
+  final double outlineWidth;
+
+  bool allows(DanmakuMode mode) {
+    switch (mode) {
+      case DanmakuMode.scroll:
+        return showScroll;
+      case DanmakuMode.top:
+        return showTop;
+      case DanmakuMode.bottom:
+        return showBottom;
+    }
+  }
 
   @override
   State<DanmakuOverlay> createState() => _DanmakuOverlayState();
@@ -143,7 +172,11 @@ class _DanmakuOverlayState extends State<DanmakuOverlay>
         _cursor++;
         continue;
       }
-      if (_lines.length >= widget.maxOnScreen) {
+      if (!widget.allows(item.mode)) {
+        _cursor++;
+        continue;
+      }
+      if (_lines.length >= _effectiveLimit) {
         _cursor++;
         continue;
       }
@@ -162,6 +195,9 @@ class _DanmakuOverlayState extends State<DanmakuOverlay>
       _cursor++;
     }
   }
+
+  int get _effectiveLimit =>
+      (widget.maxOnScreen * widget.density).clamp(10, widget.maxOnScreen).round();
 
   int? _findLane(int startMs) {
     for (var lane = 0; lane < _laneCount; lane++) {
@@ -213,10 +249,10 @@ class _DanmakuOverlayState extends State<DanmakuOverlay>
     if (!widget.enabled) return const SizedBox.shrink();
     return LayoutBuilder(
       builder: (context, constraints) {
-        _laneCount = math.max(
-          1,
-          ((constraints.maxHeight * 0.8) / (widget.fontSize + 14)).floor(),
-        );
+        final usable = constraints.maxHeight * widget.areaRatio -
+            widget.topMargin -
+            widget.bottomMargin;
+        _laneCount = math.max(1, (usable / (widget.fontSize + 14)).floor());
         return IgnorePointer(
           child: CustomPaint(
             painter: _DanmakuPainter(
@@ -226,6 +262,9 @@ class _DanmakuOverlayState extends State<DanmakuOverlay>
               fontSize: widget.fontSize,
               opacity: widget.opacity,
               measure: _measure,
+              topMargin: widget.topMargin,
+              bottomMargin: widget.bottomMargin,
+              outlineWidth: widget.outlineWidth,
             ),
             size: Size.infinite,
           ),
@@ -243,6 +282,9 @@ class _DanmakuPainter extends CustomPainter {
     required this.fontSize,
     required this.opacity,
     required this.measure,
+    required this.topMargin,
+    required this.bottomMargin,
+    required this.outlineWidth,
   });
 
   final List<_DanmakuLine> lines;
@@ -251,12 +293,15 @@ class _DanmakuPainter extends CustomPainter {
   final double fontSize;
   final double opacity;
   final TextPainter Function(String) measure;
+  final double topMargin;
+  final double bottomMargin;
+  final double outlineWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (lines.isEmpty) return;
     final laneHeight = fontSize + 14;
-    final topPadding = size.height * 0.06;
+    final topPadding = topMargin + 8;
 
     for (final line in lines) {
       final progress = (nowMs - line.startMs) / _DanmakuOverlayState.travelMs;
@@ -278,7 +323,7 @@ class _DanmakuPainter extends CustomPainter {
           break;
         case DanmakuMode.bottom:
           final x = (width - line.width) / 2;
-          final y = size.height - (fontSize + 12) - topPadding;
+          final y = size.height - (fontSize + 12) - topPadding - bottomMargin;
           _drawWithShadow(canvas, painter, color, Offset(x, y));
           break;
       }
@@ -291,6 +336,18 @@ class _DanmakuPainter extends CustomPainter {
     Color color,
     Offset offset,
   ) {
+    if (outlineWidth <= 0) {
+      final only = TextPainter(
+        text: TextSpan(
+          text: painter.text?.toPlainText() ?? '',
+          style: painter.text?.style?.copyWith(color: color),
+        ),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+      only.paint(canvas, offset);
+      return;
+    }
     final shadow = TextPainter(
       text: TextSpan(
         text: painter.text?.toPlainText() ?? '',
@@ -301,7 +358,7 @@ class _DanmakuPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
       maxLines: 1,
     )..layout();
-    shadow.paint(canvas, offset + const Offset(1.2, 1.2));
+    shadow.paint(canvas, offset + Offset(outlineWidth, outlineWidth));
     final real = TextPainter(
       text: TextSpan(
         text: painter.text?.toPlainText() ?? '',

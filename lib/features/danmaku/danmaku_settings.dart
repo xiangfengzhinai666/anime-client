@@ -18,6 +18,14 @@ class DanmakuSettings {
     this.fontSize = 22,
     this.speedFactor = 1.0,
     this.maxOnScreen = 80,
+    this.showScroll = true,
+    this.showTop = true,
+    this.showBottom = true,
+    this.areaRatio = 1.0,
+    this.density = 1.0,
+    this.topMargin = 0.0,
+    this.bottomMargin = 0.0,
+    this.outlineWidth = 1.2,
     this.blockedWords = const [],
     this.dandanplayAppId = '',
     this.dandanplayAppSecret = '',
@@ -32,6 +40,24 @@ class DanmakuSettings {
   final double fontSize;
   final double speedFactor;
   final int maxOnScreen;
+
+  /// 分模式开关。
+  final bool showScroll;
+  final bool showTop;
+  final bool showBottom;
+
+  /// 弹幕占屏幕高度的比例（0.2~1.0）。
+  final double areaRatio;
+
+  /// 密度（0.2~1.0）：实际同屏上限 = maxOnScreen * density。
+  final double density;
+
+  /// 顶部 / 底部边距（逻辑像素）。
+  final double topMargin;
+  final double bottomMargin;
+
+  /// 描边宽度（0 = 无描边）。
+  final double outlineWidth;
   final List<String> blockedWords;
   final String dandanplayAppId;
   final String dandanplayAppSecret;
@@ -44,6 +70,14 @@ class DanmakuSettings {
     double? fontSize,
     double? speedFactor,
     int? maxOnScreen,
+    bool? showScroll,
+    bool? showTop,
+    bool? showBottom,
+    double? areaRatio,
+    double? density,
+    double? topMargin,
+    double? bottomMargin,
+    double? outlineWidth,
     List<String>? blockedWords,
     String? dandanplayAppId,
     String? dandanplayAppSecret,
@@ -56,6 +90,14 @@ class DanmakuSettings {
       fontSize: fontSize ?? this.fontSize,
       speedFactor: speedFactor ?? this.speedFactor,
       maxOnScreen: maxOnScreen ?? this.maxOnScreen,
+      showScroll: showScroll ?? this.showScroll,
+      showTop: showTop ?? this.showTop,
+      showBottom: showBottom ?? this.showBottom,
+      areaRatio: areaRatio ?? this.areaRatio,
+      density: density ?? this.density,
+      topMargin: topMargin ?? this.topMargin,
+      bottomMargin: bottomMargin ?? this.bottomMargin,
+      outlineWidth: outlineWidth ?? this.outlineWidth,
       blockedWords: blockedWords ?? this.blockedWords,
       dandanplayAppId: dandanplayAppId ?? this.dandanplayAppId,
       dandanplayAppSecret: dandanplayAppSecret ?? this.dandanplayAppSecret,
@@ -70,6 +112,14 @@ class DanmakuSettings {
         'fontSize': fontSize,
         'speedFactor': speedFactor,
         'maxOnScreen': maxOnScreen,
+        'showScroll': showScroll,
+        'showTop': showTop,
+        'showBottom': showBottom,
+        'areaRatio': areaRatio,
+        'density': density,
+        'topMargin': topMargin,
+        'bottomMargin': bottomMargin,
+        'outlineWidth': outlineWidth,
         'blockedWords': blockedWords,
         'dandanplayAppId': dandanplayAppId,
         'dandanplayAppSecret': dandanplayAppSecret,
@@ -96,6 +146,14 @@ class DanmakuSettings {
         fontSize: (json['fontSize'] as num?)?.toDouble() ?? 22,
         speedFactor: (json['speedFactor'] as num?)?.toDouble() ?? 1.0,
         maxOnScreen: (json['maxOnScreen'] as num?)?.toInt() ?? 80,
+        showScroll: json['showScroll'] as bool? ?? true,
+        showTop: json['showTop'] as bool? ?? true,
+        showBottom: json['showBottom'] as bool? ?? true,
+        areaRatio: (json['areaRatio'] as num?)?.toDouble() ?? 1.0,
+        density: (json['density'] as num?)?.toDouble() ?? 1.0,
+        topMargin: (json['topMargin'] as num?)?.toDouble() ?? 0,
+        bottomMargin: (json['bottomMargin'] as num?)?.toDouble() ?? 0,
+        outlineWidth: (json['outlineWidth'] as num?)?.toDouble() ?? 1.2,
         blockedWords: (json['blockedWords'] as List?)
                 ?.map((e) => '$e')
                 .where((e) => e.trim().isNotEmpty)
@@ -177,6 +235,30 @@ class DanmakuSettingsNotifier extends StateNotifier<DanmakuSettings> {
 
   Future<void> setMaxOnScreen(int value) =>
       _persist(state.copyWith(maxOnScreen: value.clamp(20, 200)));
+
+  Future<void> setShowScroll(bool value) =>
+      _persist(state.copyWith(showScroll: value));
+
+  Future<void> setShowTop(bool value) =>
+      _persist(state.copyWith(showTop: value));
+
+  Future<void> setShowBottom(bool value) =>
+      _persist(state.copyWith(showBottom: value));
+
+  Future<void> setAreaRatio(double value) =>
+      _persist(state.copyWith(areaRatio: value.clamp(0.2, 1.0)));
+
+  Future<void> setDensity(double value) =>
+      _persist(state.copyWith(density: value.clamp(0.2, 1.0)));
+
+  Future<void> setTopMargin(double value) =>
+      _persist(state.copyWith(topMargin: value.clamp(0, 120)));
+
+  Future<void> setBottomMargin(double value) =>
+      _persist(state.copyWith(bottomMargin: value.clamp(0, 120)));
+
+  Future<void> setOutlineWidth(double value) =>
+      _persist(state.copyWith(outlineWidth: value.clamp(0, 4)));
 
   Future<void> setBlockedWords(String raw) {
     final words = raw

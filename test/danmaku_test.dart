@@ -101,4 +101,34 @@ void main() {
       expect(restored.enabled, isTrue);
     });
   });
+
+  group('弹幕显示参数', () {
+    test('默认值：全模式开启、区域与密度 100%', () {
+      const settings = DanmakuSettings();
+      expect(settings.showScroll, isTrue);
+      expect(settings.showTop, isTrue);
+      expect(settings.showBottom, isTrue);
+      expect(settings.areaRatio, 1.0);
+      expect(settings.density, 1.0);
+      expect(settings.outlineWidth, greaterThan(0));
+    });
+
+    test('显示参数能持久化往返', () {
+      const settings = DanmakuSettings(
+        areaRatio: 0.3,
+        density: 0.8,
+        topMargin: 24,
+        bottomMargin: 48,
+        outlineWidth: 2.5,
+        showTop: false,
+      );
+      final restored = DanmakuSettings.fromJson(jsonEncode(settings.toJson()));
+      expect(restored.areaRatio, 0.3);
+      expect(restored.density, 0.8);
+      expect(restored.topMargin, 24);
+      expect(restored.bottomMargin, 48);
+      expect(restored.outlineWidth, 2.5);
+      expect(restored.showTop, isFalse);
+    });
+  });
 }

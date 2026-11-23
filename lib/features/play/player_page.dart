@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,7 @@ import '../catalog/data/catalog_models.dart';
 import '../danmaku/danmaku_providers.dart';
 import '../danmaku/danmaku_settings.dart';
 import '../danmaku/widgets/danmaku_overlay.dart';
+import '../danmaku/widgets/danmaku_panel.dart';
 import 'arrow_key_gesture.dart';
 import 'data/play_models.dart';
 import 'play_providers.dart';
@@ -85,6 +87,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   String _sectionId = '';
   int _lineIndex = 0;
   bool _needsLogin = false;
+  bool _showDanmakuPanel = false;
 
   int get _episodeIndex => widget.episode;
 
@@ -105,6 +108,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     _log = ref.read(appLoggerProvider);
     _bindPlayer();
     _load();
+    // 截图/调试用：直接展开弹幕面板
+    if (Platform.environment['DSH_SHOT_PANEL'] == '1') {
+      _showDanmakuPanel = true;
+    }
     _arrowKeyGesture = ArrowKeyHoldGesture(
       onShortPress: () => _seekRelative(5),
       onLongPressStart: _holdFastForward,
@@ -483,6 +490,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
                     onLogin: _openLogin,
                     onBack: _back,
                   ),
+                  if (_showDanmakuPanel)
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: DanmakuPanel(
+                        onClose: () => setState(() => _showDanmakuPanel = false),
+                      ),
+                    ),
                   AnimatedOpacity(
                     opacity: _controlsVisible ? 1 : 0,
                     duration: AppDurations.normal,
@@ -536,6 +552,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
       maxOnScreen: settings.maxOnScreen,
       blockedPattern: settings.blockedPattern,
       enabled: settings.enabled && items.isNotEmpty,
+      showScroll: settings.showScroll,
+      showTop: settings.showTop,
+      showBottom: settings.showBottom,
+      areaRatio: settings.areaRatio,
+      density: settings.density,
+      topMargin: settings.topMargin,
+      bottomMargin: settings.bottomMargin,
+      outlineWidth: settings.outlineWidth,
     );
   }
 
@@ -568,6 +592,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
           onFullscreen: _toggleFullscreen,
           onPickLine: _playLine,
           onShowEpisodes: _showEpisodes,
+          onOpenDanmakuPanel: () =>
+              setState(() => _showDanmakuPanel = !_showDanmakuPanel),
         ),
       ],
     );
@@ -676,6 +702,7 @@ class _BottomBar extends StatelessWidget {
     required this.onFullscreen,
     required this.onPickLine,
     required this.onShowEpisodes,
+    required this.onOpenDanmakuPanel,
   });
 
   final bool playing;
@@ -697,6 +724,7 @@ class _BottomBar extends StatelessWidget {
   final VoidCallback onFullscreen;
   final ValueChanged<int> onPickLine;
   final VoidCallback onShowEpisodes;
+  final VoidCallback onOpenDanmakuPanel;
 
   @override
   Widget build(BuildContext context) {
@@ -796,6 +824,11 @@ class _BottomBar extends StatelessWidget {
                   max: 100,
                   onChanged: onVolume,
                 ),
+              ),
+              IconButton(
+                onPressed: onOpenDanmakuPanel,
+                icon: const Icon(Icons.subtitles_rounded, color: Colors.white),
+                tooltip: '弹幕设置',
               ),
               IconButton(
                 onPressed: hasEpisodes ? onShowEpisodes : null,
