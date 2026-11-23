@@ -35,6 +35,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   @override
   void initState() {
     super.initState();
+    // 让"清空"按钮随输入即时出现/消失
+    _controller.addListener(_onTextChanged);
     // 开发期：自动化截图时预先灌入查询词
     final preset = DevEnv.initialQuery;
     if (preset != null) {
@@ -44,8 +46,18 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     }
   }
 
+  /// 输入框是否显示"清空"按钮（只在需要切换时重建，避免逐字符重建整页）。
+  bool _showClear = false;
+
+  void _onTextChanged() {
+    if (!mounted) return;
+    final show = _controller.text.isNotEmpty;
+    if (show != _showClear) setState(() => _showClear = show);
+  }
+
   @override
   void dispose() {
+    _controller.removeListener(_onTextChanged);
     _controller.dispose();
     super.dispose();
   }
@@ -59,6 +71,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       _recent.insert(0, text);
       if (_recent.length > 8) _recent.removeLast();
       _keyword = text;
+      _showClear = true;
     });
   }
 
@@ -81,7 +94,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             decoration: InputDecoration(
               hintText: '输入番剧名，回车搜索',
               prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: _controller.text.isEmpty
+              suffixIcon: !_showClear
                   ? null
                   : IconButton(
                       tooltip: '清空',
@@ -89,6 +102,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       onPressed: () => setState(() {
                         _controller.clear();
                         _keyword = '';
+                        _showClear = false;
                       }),
                     ),
             ),
