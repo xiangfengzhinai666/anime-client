@@ -13,31 +13,57 @@ import 'widgets/cover_image.dart';
 ///
 /// 数据策略：主数据来自 B 站/AniList（带 6 小时缓存），
 /// 角色表由 AniList 异步补充（失败不影响主内容）。
-/// 跳转到播放页（路由里 episode 是 1 基序号）。
-void _playEpisode(BuildContext context, String internalId, int episode) {
-  context.push('/watch/${Uri.encodeComponent(internalId)}/$episode');
-}
-
-/// 非次元城条目（B 站 / AniList）只有元数据，播放要去次元城找同名条目。
-Future<void> _findOnCycani(
+/// 播放任意源：次元城条目直接播；其它源自动找同名可播放条目再播。
+///
+/// 这就是"多源"的最小形态：用户只管点「从第 1 集开始」，由应用去找谁能播。
+Future<void> _playResolved(
   BuildContext context,
   WidgetRef ref,
-  String title,
+  AnimeDetail detail,
+  int episode,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
-  try {
-    final page = await ref.read(cycaniCatalogProvider).search(title, pageSize: 5);
-    if (!context.mounted) return;
-    if (page.items.isEmpty) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('次元城没有搜到「$title」，换个关键词试试')),
-      );
-      return;
-    }
-    context.push('/bangumi/${Uri.encodeComponent(page.items.first.id)}');
-  } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('搜索次元城失败：$e')));
+  final summary = detail.summary;
+  if (summary.source == CatalogSource.cycani) {
+    context.push('/watch/${Uri.encodeComponent(summary.id)}/$episode');
+    return;
   }
+
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.showSnackBar(
+    const SnackBar(
+      content: Text('正在寻找可播放的源…'),
+      duration: Duration(seconds: 2),
+    ),
+  );
+
+  String? targetId;
+  // 先用中文名，再用日文原名/罗马音兜底
+  final candidates = <String>[
+    summary.title,
+    summary.subtitle,
+  ].map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+
+  for (final title in candidates) {
+    try {
+      final page =
+          await ref.read(cycaniCatalogProvider).search(title, pageSize: 5);
+      if (page.items.isNotEmpty) {
+        targetId = page.items.first.id;
+        break;
+      }
+    } catch (_) {
+      // 换下一个候选标题继续
+    }
+  }
+
+  if (!context.mounted) return;
+  if (targetId == null) {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('没有找到可播放的源（次元城可能没有这部）')),
+    );
+    return;
+  }
+  context.push('/watch/${Uri.encodeComponent(targetId)}/$episode');
 }
 
 class AnimeDetailPage extends ConsumerWidget {
@@ -120,15 +146,8 @@ class _DetailBody extends ConsumerWidget {
               _Header(
                 detail: detail,
                 playable: detail.summary.source == CatalogSource.cycani,
-                onPlay: detail.summary.source == CatalogSource.cycani
-                    ? (detail.episodes.isEmpty
-                        ? null
-                        : () => _playEpisode(
-                              context,
-                              detail.summary.id,
-                              detail.episodes.first.index,
-                            ))
-                    : () => _findOnCycani(context, ref, detail.summary.title),
+                onPlay: (index) =>
+                    _playResolved(context, ref, detail, index),
               ),
               const SizedBox(height: AppSpacing.xl),
               if (detail.synopsis.isNotEmpty) ...[
@@ -165,17 +184,14 @@ class _DetailBody extends ConsumerWidget {
               else
                 _EpisodeGrid(
                   episodes: detail.episodes,
-                  onPlay: detail.summary.source == CatalogSource.cycani
-                      ? (index) =>
-                          _playEpisode(context, detail.summary.id, index)
-                      : null,
+                  onPlay: (index) =>
+                      _playResolved(context, ref, detail, index),
                 ),
                 if (detail.summary.source != CatalogSource.cycani)
                   Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.sm),
                     child: Text(
-                      '这条来自 ${detail.summary.source.label}，只提供元数据；'
-                      '点上面的「在次元城找这部」去播放。',
+                      '这条来自 ${detail.summary.source.label}：点播放会自动寻找可播放的源。',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
@@ -197,7 +213,7 @@ class _Header extends StatelessWidget {
   });
 
   final AnimeDetail detail;
-  final VoidCallback? onPlay;
+  final void Function(int episode)? onPlay;
   final bool playable;
 
   @override
@@ -263,16 +279,12 @@ class _Header extends StatelessWidget {
               Row(
                 children: [
                   FilledButton.icon(
-                    onPressed: onPlay,
-                    icon: Icon(
-                      playable
-                          ? Icons.play_arrow_rounded
-                          : Icons.travel_explore_rounded,
-                    ),
+                    onPressed: detail.episodes.isEmpty
+                        ? null
+                        : () => onPlay?.call(detail.episodes.first.index),
+                    icon: const Icon(Icons.play_arrow_rounded),
                     label: Text(
-                      playable
-                          ? (detail.episodes.isEmpty ? '暂无剧集' : '从第 1 集开始')
-                          : '在次元城找这部',
+                      detail.episodes.isEmpty ? '暂无剧集' : '从第 1 集开始',
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
@@ -353,7 +365,7 @@ class _EpisodeGrid extends StatelessWidget {
   const _EpisodeGrid({required this.episodes, required this.onPlay});
 
   final List<AnimeEpisode> episodes;
-  final ValueChanged<int>? onPlay;
+  final ValueChanged<int> onPlay;
 
   @override
   Widget build(BuildContext context) {
@@ -365,7 +377,7 @@ class _EpisodeGrid extends StatelessWidget {
           Tooltip(
             message: ep.title,
             child: OutlinedButton(
-              onPressed: onPlay == null ? null : () => onPlay!(ep.index),
+              onPressed: () => onPlay(ep.index),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(64, 36),
                 padding: const EdgeInsets.symmetric(horizontal: 12),

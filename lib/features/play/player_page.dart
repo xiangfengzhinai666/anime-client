@@ -291,6 +291,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     if (_holdingFastForward) return;
     _holdingFastForward = true;
     _speedBeforeHold = _speed;
+    _log.debug('play', 'hold-right down: rate $_speed -> 2.0');
     await _player.setRate(2.0);
     if (mounted) setState(() {});
   }
@@ -298,7 +299,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   Future<void> _releaseFastForward() async {
     if (!_holdingFastForward) return;
     _holdingFastForward = false;
-    await _player.setRate(_speedBeforeHold == 2.0 ? 1.0 : _speedBeforeHold);
+    final restored = _speedBeforeHold == 2.0 ? 1.0 : _speedBeforeHold;
+    _log.debug('play', 'hold-right up: rate -> $restored');
+    await _player.setRate(restored);
     if (mounted) setState(() {});
   }
 
@@ -402,7 +405,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
               onDoubleTap: _toggleFullscreen,
               child: Listener(
                 onPointerDown: (event) {
-                  if (event.buttons == kSecondaryMouseButton) {
+                  if ((event.buttons & kSecondaryMouseButton) != 0) {
                     _holdFastForward();
                   }
                 },
@@ -427,6 +430,23 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
                         width: 42,
                         height: 42,
                         child: CircularProgressIndicator(strokeWidth: 3),
+                      ),
+                    ),
+                  if (_holdingFastForward)
+                    Positioned(
+                      top: 56,
+                      right: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: AppRadius.pillAll,
+                        ),
+                        child: const Text(
+                          '2x 快进中',
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
                       ),
                     ),
                   if (_error != null) _ErrorPanel(
