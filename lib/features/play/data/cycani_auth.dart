@@ -19,6 +19,13 @@ class CycaniSession {
   final String nickname;
   final DateTime? expiresAt;
 
+  /// 站点登录接口返回的 token 可能自带 `Bearer ` 前缀，
+  /// 发送时我们会再拼一次，所以要统一剥掉，否则会变成 `Bearer Bearer …`（401）。
+  static String normalizeToken(String raw) {
+    final token = raw.trim();
+    return token.replaceFirst(RegExp(r'^Bearer\s+', caseSensitive: false), '');
+  }
+
   bool get isExpired =>
       expiresAt != null && DateTime.now().isAfter(expiresAt!);
 
@@ -30,7 +37,7 @@ class CycaniSession {
       };
 
   static CycaniSession? fromJson(Map<String, dynamic> json) {
-    final token = '${json['token'] ?? ''}';
+    final token = normalizeToken('${json['token'] ?? ''}');
     if (token.isEmpty) return null;
     final raw = json['expires_at'];
     return CycaniSession(
@@ -57,6 +64,15 @@ class CycaniAuth {
   CycaniSession? _session;
   CycaniSession? get session => _session;
   bool get isLoggedIn => _session != null;
+
+  /// 确保登录态已从凭据管理器读出来。
+  ///
+  /// 应用启动时 `restore()` 是异步的；如果用户启动后立刻点播放，
+  /// 这里可能还没跑完。播放前显式等一次，避免误判成"未登录"。
+  Future<void> ensureLoaded() async {
+    if (_session != null) return;
+    await restore();
+  }
 
   /// 启动时恢复上次登录。
   Future<CycaniSession?> restore() async {
@@ -93,7 +109,7 @@ class CycaniAuth {
     );
 
     final data = _asMap(json['data'] ?? json);
-    final token = '${data['token'] ?? ''}';
+    final token = CycaniSession.normalizeToken('${data['token'] ?? ''}');
     if (token.isEmpty) {
       throw ApiException('登录失败：${json['msg'] ?? '没有返回 token'}');
     }
@@ -139,7 +155,7 @@ class CycaniAuth {
         tag: 'cycani-refresh',
       );
       final data = _asMap(json['data'] ?? json);
-      final token = '${data['token'] ?? ''}';
+      final token = CycaniSession.normalizeToken('${data['token'] ?? ''}');
       if (token.isEmpty) return null;
       return CycaniSession(
         token: token,

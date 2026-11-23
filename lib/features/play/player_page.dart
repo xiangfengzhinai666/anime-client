@@ -148,7 +148,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
         return;
       }
 
-      final lines = await ref.read(playLinesProvider(sectionId).future);
+      // 用 refresh 而不是 read：登录前失败的结果会被缓存，登录后必须重新请求
+      final lines = await ref.refresh(playLinesProvider(sectionId).future);
       if (!mounted) return;
 
       final resume = await ref.read(

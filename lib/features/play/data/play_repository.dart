@@ -22,20 +22,35 @@ class PlayRepository {
     String sectionId, {
     required bool allowRetry,
   }) async {
+    await _auth.ensureLoaded();
     final session = _auth.session;
     if (session == null) {
       throw AuthRequiredException('需要登录次元城才能播放');
     }
 
     try {
-      final json = await _client.getJson(
-        '${CycaniCatalog.base}/api/v2/sections/$sectionId/play-url',
-        headers: {
-          ...CycaniCatalog.appHeaders,
-          'Authorization': 'Bearer ${session.token}',
-        },
-        tag: 'cycani-play-url',
-      );
+      final url = '${CycaniCatalog.base}/api/v2/sections/$sectionId/play-url';
+      final headers = {
+        ...CycaniCatalog.appHeaders,
+        'Authorization': 'Bearer ${CycaniSession.normalizeToken(session.token)}',
+      };
+
+      Map<String, dynamic> json;
+      try {
+        json = await _client.getJson(url, headers: headers, tag: 'cycani-play-url');
+      } on ApiException catch (e) {
+        // 少数站点的 play-url 只接受 POST，GET 会 404/405
+        if (e.statusCode == 404 || e.statusCode == 405) {
+          json = await _client.postJson(
+            url,
+            body: const <String, dynamic>{},
+            headers: headers,
+            tag: 'cycani-play-url-post',
+          );
+        } else {
+          rethrow;
+        }
+      }
 
       final code = json['code'];
       if (code is int && code != 0) {
@@ -43,7 +58,9 @@ class PlayRepository {
       }
       final lines = parsePlayLines(json['data']);
       if (lines.isEmpty) {
-        throw ApiException('这个线路暂时没有可播放的地址');
+        throw ApiException(
+          '这个线路暂时没有可播放的地址（返回：${_brief(json)}）',
+        );
       }
       return lines;
     } on ApiException catch (e) {
@@ -57,6 +74,12 @@ class PlayRepository {
       rethrow;
     }
   }
+}
+
+/// 日志里只留一小段，避免把整包响应写进去。
+String _brief(Object? json) {
+  final text = '$json'.replaceAll(RegExp(r'\s+'), ' ');
+  return text.length <= 160 ? text : '${text.substring(0, 160)}…';
 }
 
 /// 需要登录（或登录已失效）。

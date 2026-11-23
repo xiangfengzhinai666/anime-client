@@ -85,4 +85,25 @@ void main() {
       expect(noExpiry.isExpired, isFalse);
     });
   });
+
+  test('token 自带 Bearer 前缀时会被剥掉', () {
+    expect(
+      CycaniSession.normalizeToken('Bearer eyJhbGciOi'),
+      'eyJhbGciOi',
+    );
+    expect(
+      CycaniSession.normalizeToken('bearer   eyJhbGciOi'),
+      'eyJhbGciOi',
+    );
+    expect(CycaniSession.normalizeToken('eyJhbGciOi'), 'eyJhbGciOi');
+    expect(CycaniSession.normalizeToken('  '), '');
+  });
+
+  test('fromJson 也会规范化 token（兼容旧缓存）', () {
+    final session = CycaniSession.fromJson(const {
+      'token': 'Bearer abc',
+      'username': 'u',
+    });
+    expect(session!.token, 'abc');
+  });
 }

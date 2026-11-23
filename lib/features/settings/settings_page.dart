@@ -311,7 +311,10 @@ class _AccountTile extends ConsumerWidget {
       ),
       trailing: loggedIn
           ? TextButton(
-              onPressed: () => ref.read(cycaniSessionProvider.notifier).logout(),
+              onPressed: () async {
+                await ref.read(cycaniSessionProvider.notifier).logout();
+                ref.invalidate(playLinesProvider);
+              },
               child: const Text('退出登录'),
             )
           : FilledButton.tonal(

@@ -49,6 +49,8 @@ class _CycaniLoginDialogState extends ConsumerState<CycaniLoginDialog> {
     });
     try {
       await ref.read(cycaniSessionProvider.notifier).login(username, password);
+      // 登录前失败的线路请求会被缓存，这里清掉，让播放页重新取
+      ref.invalidate(playLinesProvider);
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) setState(() => _error = _friendly(e));
