@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:win32/win32.dart';
 
 import '../../app/providers/app_providers.dart';
 import '../../app/theme/app_tokens.dart';
@@ -74,7 +72,6 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   double _speedBeforeHold = 1.0;
   bool _holdingFastForward = false;
   late final ArrowKeyHoldGesture _arrowKeyGesture;
-  Timer? _mousePoll;
 
   Timer? _hideTimer;
   Timer? _saveTimer;
@@ -104,33 +101,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     _log = ref.read(appLoggerProvider);
     _bindPlayer();
     _load();
-    _startMousePolling();
     _arrowKeyGesture = ArrowKeyHoldGesture(
       onShortPress: () => _seekRelative(5),
       onLongPressStart: _holdFastForward,
       onLongPressEnd: _releaseFastForward,
     );
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
-  }
-
-  /// 每 100ms 轮询一次鼠标右键状态。
-  ///
-  /// 不用 Flutter 的指针事件：窗口失焦或事件被上层控件吃掉时收不到，
-  /// 直接读系统按键状态最稳。仅当本窗口是前台窗口时才生效。
-  void _startMousePolling() {
-    _mousePoll?.cancel();
-    _mousePoll = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      if (!_ready || _error != null) return;
-      final down = (GetAsyncKeyState(0x02) & 0x8000) != 0; // VK_RBUTTON
-      // 不做焦点/悬停门槛：鼠标右键按下就快进，松开恢复。
-      // （窗口丢失焦点时 Flutter 收不到指针事件，这也是之前右键无效的原因）
-      final active = down;
-      if (active && !_holdingFastForward) {
-        _holdFastForward();
-      } else if (!active && _holdingFastForward) {
-        _releaseFastForward();
-      }
-    });
   }
 
   void _bindPlayer() {
@@ -297,7 +273,6 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     _arrowKeyGesture.dispose();
-    _mousePoll?.cancel();
     _hideTimer?.cancel();
     _saveTimer?.cancel();
     _save();
@@ -456,22 +431,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
           body: MouseRegion(
             onHover: (_) => _showControls(),
             child: GestureDetector(
-              onTap: _showControls,
+              // 单击画面 = 暂停/继续；双击 = 全屏
+              onTap: _togglePlay,
               onDoubleTap: _toggleFullscreen,
-              onSecondaryTapDown: (_) => _holdFastForward(),
-              onSecondaryTapUp: (_) => _releaseFastForward(),
-              onSecondaryTapCancel: _releaseFastForward,
-              child: Listener(
-                onPointerDown: (event) {
-                  if ((event.buttons & kSecondaryMouseButton) != 0) {
-                    _holdFastForward();
-                  }
-                },
-                onPointerUp: (event) {
-                  if (_holdingFastForward) _releaseFastForward();
-                },
-                onPointerCancel: (_) => _releaseFastForward(),
-                child: Stack(
+              child: Stack(
                 fit: StackFit.expand,
                 children: [
                   if (_ready)
@@ -520,7 +483,6 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
                     ),
                   ),
                 ],
-              ),
               ),
             ),
           ),
