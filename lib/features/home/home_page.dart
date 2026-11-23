@@ -12,6 +12,24 @@ import '../catalog/data/catalog_models.dart';
 import '../catalog/widgets/anime_card.dart';
 import '../catalog/widgets/hero_carousel.dart';
 
+/// 同系列去重：标题归一化后的前 4 个字相同即视为同一系列，只保留第一部。
+///
+/// 例：鬼灭之刃 / 鬼灭之刃 无限列车篇 / 鬼灭之刃 柱训练篇 → 只留第一部。
+/// 这是启发式：宁可少推几部，也不要一屏全是同一系列。
+List<AnimeSummary> distinctSeries(List<AnimeSummary> items) {
+  final seen = <String>{};
+  final out = <AnimeSummary>[];
+  for (final anime in items) {
+    final normalized = TitleMatcher.normalize(anime.title);
+    if (normalized.isEmpty) continue;
+    final key = normalized.length >= 4
+        ? normalized.substring(0, 4)
+        : normalized;
+    if (seen.add(key)) out.add(anime);
+  }
+  return out;
+}
+
 /// 首页：轮播（高分老番）+ 当季新番（中文标题）+ 高分推荐 + 继续观看。
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -21,14 +39,13 @@ class HomePage extends ConsumerWidget {
     final history = ref.watch(recentHistoryProvider);
     final season = ref.watch(homeSeasonProvider);
     final classic = ref.watch(homeClassicProvider);
-    final popular = ref.watch(homePopularProvider);
 
     void open(AnimeSummary anime) =>
         context.push('/bangumi/${Uri.encodeComponent(anime.id)}');
 
     return PageScaffold(
       title: '首页',
-      subtitle: '当季新番来自次元城（中文标题），轮播与热门来自 B 站',
+      subtitle: '当季新番来自次元城（中文标题），老番轮播与推荐来自 B 站',
       actions: [
         IconButton(
           tooltip: '刷新',
@@ -64,16 +81,16 @@ class HomePage extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.xl),
           SectionHeader(
-            title: '热门推荐',
-            description: '按追番人数',
+            title: '日漫老番推荐',
+            description: '已完结 · 按追番人数',
             trailing: TextButton(
               onPressed: () => context.go('/browse'),
               child: const Text('查看全部'),
             ),
           ),
           _CatalogBlock(
-            page: popular,
-            onRetry: () => ref.invalidate(homePopularProvider),
+            page: classic,
+            onRetry: () => ref.invalidate(homeClassicProvider),
             onOpen: open,
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -200,8 +217,10 @@ class _CatalogBlock extends StatelessWidget {
             compact: true,
           );
         }
+        // 同系列只留第一部（鬼灭 5 条连排太丑），再取两行
+        final distinct = distinctSeries(data.items);
         return AnimeGrid(
-          items: data.items.take(12).toList(),
+          items: distinct.take(14).toList(),
           onTap: onOpen,
         );
       },
@@ -297,4 +316,5 @@ class _HistoryRow extends StatelessWidget {
       ),
     );
   }
+
 }

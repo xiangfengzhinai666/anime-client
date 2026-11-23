@@ -13,7 +13,7 @@ void main() {
 
     expect(find.text('葬送的芙莉莲'), findsWidgets);
     expect(find.text('当季新番'), findsOneWidget);
-    expect(find.text('热门推荐'), findsOneWidget);
+    expect(find.text('日漫老番推荐'), findsOneWidget);
 
     await shutdownApp(tester);
   });

@@ -93,6 +93,9 @@ class FakeCatalogRepository implements CatalogRepository {
   Future<AnimeDetail?> enrich(AnimeDetail detail) async => null;
 
   @override
+  Future<int?> progressOf(String internalId) async => 8;
+
+  @override
   Future<CatalogPage> seasonNow({int limit = 12}) async {
     if (error != null) throw error!;
     return CatalogPage(

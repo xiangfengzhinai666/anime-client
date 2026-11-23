@@ -246,4 +246,28 @@ class CycaniCatalog {
     }
     return text;
   }
+
+  /// 已更新集数。
+  ///
+  /// 周表项只有"总集数"，没有"更新到第几集"。这里用 sections 接口的
+  /// `pager.total`（页大小设 1）拿数量，一次轻请求即可。
+  Future<int?> episodeProgress(String videoId, {String playerCode = 'cychub'}) async {
+    try {
+      final json = await _client.getJson(
+        '$base/api/videos/$videoId/sections',
+        query: {'player_code': playerCode, 'page': 1, 'page_size': 1},
+        headers: appHeaders,
+        tag: 'cycani-progress',
+      );
+      final data = _map(json['data']);
+      final pager = _map(data['pager']);
+      final total = _int(pager['total']);
+      if (total != null && total > 0) return total;
+      final list = data['list'];
+      if (list is List && list.isNotEmpty) return list.length;
+    } catch (_) {
+      // 拿不到就算了，卡片退化为显示"总集数"
+    }
+    return null;
+  }
 }

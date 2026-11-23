@@ -85,10 +85,16 @@ final homePopularProvider = FutureProvider<CatalogPage>((ref) {
 final homeClassicProvider = FutureProvider<CatalogPage>((ref) {
   return ref.watch(catalogRepositoryProvider).browse(
         page: 1,
-        pageSize: 18,
+        pageSize: 30,
         isFinish: 1,
         order: '3',
       );
+});
+
+/// 卡片上的"更新至第 N 话"（仅次元城有数据）。
+final animeProgressProvider =
+    FutureProvider.family<int?, String>((ref, internalId) {
+  return ref.watch(catalogRepositoryProvider).progressOf(internalId);
 });
 
 /// 详情：按 `source:id` 拉取并缓存。

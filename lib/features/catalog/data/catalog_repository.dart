@@ -32,6 +32,9 @@ abstract class CatalogRepository {
 
   /// 当季新番（中文标题 + 更新进度）。
   Future<CatalogPage> seasonNow({int limit});
+
+  /// 已更新集数（仅次元城）。
+  Future<int?> progressOf(String internalId);
 }
 
 /// 默认实现：B 站 + AniList + 本地缓存。
@@ -194,6 +197,30 @@ class CatalogRepositoryImpl implements CatalogRepository {
 
     await cache.put(internalId, detail.toJson());
     return detail;
+  }
+
+  final Map<String, (int, DateTime)> _progressCache = {};
+
+  /// 已更新集数（仅次元城有；其它源返回 null）。
+  ///
+  /// 会话内缓存 30 分钟，避免首页/列表反复请求。
+  @override
+  Future<int?> progressOf(String internalId) async {
+    final cached = _progressCache[internalId];
+    if (cached != null &&
+        DateTime.now().difference(cached.$2) < const Duration(minutes: 30)) {
+      return cached.$1;
+    }
+    final parts = internalId.split(':');
+    if (parts.length != 2 ||
+        CatalogSource.parse(parts.first) != CatalogSource.cycani) {
+      return null;
+    }
+    final value = await cycani.episodeProgress(parts.last);
+    if (value != null) {
+      _progressCache[internalId] = (value, DateTime.now());
+    }
+    return value;
   }
 
   /// 当季新番：次元城周表（中文标题 + 更新进度）。

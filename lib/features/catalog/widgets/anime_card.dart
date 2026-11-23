@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_tokens.dart';
+import '../catalog_providers.dart';
 import '../data/catalog_models.dart';
 import 'cover_image.dart';
 
 /// 番剧卡片：封面 + 标题 + 一行元信息。列表/网格通用。
-class AnimeCard extends StatelessWidget {
+class AnimeCard extends ConsumerWidget {
   const AnimeCard({
     super.key,
     required this.anime,
@@ -18,7 +20,7 @@ class AnimeCard extends StatelessWidget {
   final bool showSource;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
@@ -76,7 +78,7 @@ class AnimeCard extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              _meta(anime),
+              _meta(anime, _progress(ref)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
@@ -89,10 +91,23 @@ class AnimeCard extends StatelessWidget {
     );
   }
 
-  static String _meta(AnimeSummary anime) {
+  /// 次元城的条目可以拿到"已更新集数"，显示「更新至 N 话」。
+  int? _progress(WidgetRef ref) {
+    if (anime.source != CatalogSource.cycani) return null;
+    return ref.watch(animeProgressProvider(anime.id)).valueOrNull;
+  }
+
+  static String _meta(AnimeSummary anime, int? progress) {
+    if (progress != null && progress > 0) {
+      final year = anime.year == null ? '' : '${anime.year} · ';
+      return '$year更新至 $progress 话';
+    }
+    // status 里已经带集数（"全26话"/"更新至第8集"）时，不再重复显示总集数
+    final statusHasEpisodes = anime.status.contains('话');
     final parts = <String>[
       if (anime.year != null) '${anime.year}',
-      if ((anime.totalEpisodes ?? 0) > 0) '${anime.totalEpisodes} 话',
+      if (!statusHasEpisodes && (anime.totalEpisodes ?? 0) > 0)
+        '${anime.totalEpisodes} 话',
       if (anime.status.isNotEmpty) anime.status,
     ];
     return parts.isEmpty ? '暂无信息' : parts.join(' · ');
