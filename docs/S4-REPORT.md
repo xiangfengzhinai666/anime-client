@@ -122,7 +122,32 @@
 
 截图：`docs/assets/s4/3-episode-cards.png`、`docs/assets/s4/4-episode-cards-fallback.png`。
 
-## 十、下一步（拿到 key 后）
+
+## 十、S4.4 修正「有资源 / 无资源」的草率语义
+
+用户指出：原来的标记其实是「**条目来自哪个站**」——次元城=有资源、B 站=无资源，
+可 B 站条目点下去会自动找源，很多都能播；将来接更多源更不成立。
+
+改成"**这一集能不能播**"三态：
+
+| 状态 | 判断 | 显示 |
+|---|---|---|
+| 可播 | 该集有播放地址（sectionId 非空） | 不显示（默认可播，不需要标） |
+| 待解析 | 当前源没地址，但可自动找源 | 不显示（不断言运行时结果） |
+| 不可播 | 当前源缺地址且无替代（如次元城某集没 sectionId） | 灰色「缺地址」 |
+
+实现上不再写死"次元城=B站"，而是详情页传入 `badgeFor(episode)` 回调；
+将来 S7 多源时换成 `PlaySourceRegistry`（每个 adapter 声明支持哪些集），UI 只问 registry。
+
+### 顺带修掉的两处缓存问题
+
+1. `AnimeEpisode.toJson` 缺 `sectionId`/`pubDate` → 已补；
+2. 旧的详情缓存里没有 `pubDate`（B 站分集日期因此不显示）→ 读缓存时检测到
+   「B 站分集全都没有日期」视为过期，自动重拉。
+
+截图：`docs/assets/s4/5-episode-cards-bili.png`（B 站条目也带日期了）。
+
+## 十一、下一步（拿到 key 后）
 
 1. **弹弹play**：实现 `X-AppId`/`X-Timestamp`/`X-Signature` 签名，接入搜索 + 弹幕；
 2. 港澳台：优先走弹弹play（他们覆盖港澳台）；

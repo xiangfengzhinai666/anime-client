@@ -184,7 +184,11 @@ class CatalogRepositoryImpl implements CatalogRepository {
           final staleCycani = detail.summary.source == CatalogSource.cycani &&
               detail.episodes.isNotEmpty &&
               detail.episodes.every((e) => e.sectionId.isEmpty);
-          if (!staleCycani) return detail;
+          // B 站分集应带播出日期；全都没有说明是旧缓存（新增字段前写入的）
+          final staleBili = detail.summary.source == CatalogSource.bili &&
+              detail.episodes.isNotEmpty &&
+              detail.episodes.every((e) => e.pubDate.isEmpty);
+          if (!staleCycani && !staleBili) return detail;
           logger.debug('catalog', '缓存缺少 sectionId，重新拉取 $internalId');
         } catch (e) {
           logger.warn('catalog', '缓存解析失败，重新拉取：$e');

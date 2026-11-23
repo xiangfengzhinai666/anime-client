@@ -202,7 +202,14 @@ class _DetailBody extends ConsumerWidget {
                           .valueOrNull ??
                       const {},
                   fallbackCover: detail.summary.cover,
-                  playable: detail.summary.source == CatalogSource.cycani,
+                  // 只有"当前源缺播放地址、且没有别的路"才标注；能播/可自动找源不标
+                  badgeFor: (ep) {
+                    if (ep.sectionId.isNotEmpty) return null;
+                    if (detail.summary.source == CatalogSource.cycani) {
+                      return '缺地址';
+                    }
+                    return null;
+                  },
                   onPlay: (index) =>
                       _playResolved(context, ref, detail, index),
                 ),

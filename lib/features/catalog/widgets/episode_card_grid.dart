@@ -17,7 +17,7 @@ class EpisodeCardGrid extends StatelessWidget {
     required this.onPlay,
     this.meta = const {},
     this.fallbackCover = '',
-    this.playable = true,
+    this.badgeFor,
   });
 
   final List<AnimeEpisode> episodes;
@@ -29,8 +29,12 @@ class EpisodeCardGrid extends StatelessWidget {
   /// 兜底封面（番剧封面）。
   final String fallbackCover;
 
-  /// 该源是否可直接播放（false 时卡片仍可点，但会走自动找源）。
-  final bool playable;
+  /// 每集的状态标记。
+  ///
+  /// 只用来标注"确实不能播"的情况：
+  /// - 能播 / 可自动找源 → 返回 null（不标注，避免误导）
+  /// - 当前源缺播放地址且没有替代 → 返回如「缺地址」
+  final String? Function(AnimeEpisode episode)? badgeFor;
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +60,7 @@ class EpisodeCardGrid extends StatelessWidget {
               durationSeconds:
                   extra?.durationSeconds ?? ep.durationSeconds,
               pubDate: extra?.pubDate ?? ep.pubDate,
-              playable: playable || ep.sectionId.isNotEmpty,
+              badge: badgeFor?.call(ep),
               onTap: () => onPlay(ep.index),
             );
           },
@@ -78,7 +82,7 @@ class _EpisodeCard extends StatelessWidget {
     required this.cover,
     required this.durationSeconds,
     required this.pubDate,
-    required this.playable,
+    required this.badge,
     required this.onTap,
   });
 
@@ -86,7 +90,7 @@ class _EpisodeCard extends StatelessWidget {
   final String cover;
   final int durationSeconds;
   final String pubDate;
-  final bool playable;
+  final String? badge;
   final VoidCallback onTap;
 
   @override
@@ -127,27 +131,27 @@ class _EpisodeCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Positioned(
-                    right: 6,
-                    top: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: playable
-                            ? const Color(0xCC1B5E20)
-                            : const Color(0xCC424242),
-                        borderRadius: AppRadius.pillAll,
-                      ),
-                      child: Text(
-                        playable ? '有资源' : '无资源',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
+                  if (badge != null)
+                    Positioned(
+                      right: 6,
+                      top: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xB3000000),
+                          borderRadius: AppRadius.pillAll,
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Text(
+                          badge!,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
