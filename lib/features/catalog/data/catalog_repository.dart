@@ -3,6 +3,7 @@ import '../../../core/storage/daos.dart';
 import 'anilist_catalog.dart';
 import 'bili_catalog.dart';
 import 'catalog_merge.dart';
+import 'search_aliases.dart';
 import 'cycani_catalog.dart';
 import 'catalog_models.dart';
 
@@ -65,14 +66,30 @@ class CatalogRepositoryImpl implements CatalogRepository {
     }
 
     // 两个源都查：中文/西文一视同仁。
-    // 之前按语言分流（中文只查 B 站）是错的——AniList 的中文索引虽然漏个别标题
-    // （如「芙莉莲」），但大多数中文名能命中；B 站则受版权限制漏番。
+    // 另外做"查询扩展"：缩写/俗称（EVA、巨人、咒术）在各站点往往搜不到，
+    // 展开成正式名（Evangelion / Shingeki no Kyojin…）再查一遍。
+    final queries = expandSearchQuery(kw);
+
     final results = await Future.wait([
-      _safeBiliSearch(kw, page),
-      _safeAniListSearch(kw, page),
+      _safeBiliSearch(queries.first, page),
+      _safeAniListSearch(queries.first, page),
     ]);
     final biliPage = results[0];
     final aniListPage = results[1];
+
+    // 扩展词只查第一页，用来补充结果
+    final expanded = <AnimeSummary>[];
+    if (page == 1 && queries.length > 1) {
+      final extra = await Future.wait([
+        for (final query in queries.skip(1)) ...[
+          _safeBiliSearch(query, 1),
+          _safeAniListSearch(query, 1),
+        ],
+      ]);
+      for (final result in extra) {
+        expanded.addAll(result.items);
+      }
+    }
 
     // 日文桥：B 站结果自带 org_title（日文原名），用它去 AniList 补全所有季。
     // 例：B 站只有「芙莉莲」S1，AniList 能补出 S2 / 迷你动画。
@@ -80,7 +97,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
 
     final merged = CatalogMerger.merge(
       biliPage.items,
-      [...aniListPage.items, ...bridged],
+      [...aniListPage.items, ...expanded, ...bridged],
       trace: (message) => logger.debug('merge', message),
     );
     logger.debug(

@@ -1,4 +1,5 @@
 import 'package:anime_client/features/catalog/data/catalog_models.dart';
+import 'package:anime_client/features/catalog/data/search_aliases.dart';
 import 'package:anime_client/features/catalog/data/source_match.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -62,6 +63,34 @@ void main() {
 
     test('空候选返回 null', () {
       expect(pickBestCandidate(wanted, const []), isNull);
+    });
+  });
+
+  group('搜索别名扩展', () {
+    test('EVA 会展开成正式名', () {
+      final queries = expandSearchQuery('EVA');
+      expect(queries.first, 'EVA');
+      expect(queries.any((q) => q.toLowerCase().contains('evangelion')), isTrue);
+      expect(queries.length, greaterThan(1));
+    });
+
+    test('原词永远排第一，且不重复', () {
+      final queries = expandSearchQuery('巨人');
+      expect(queries.first, '巨人');
+      final lower = queries.map((e) => e.toLowerCase()).toList();
+      expect(lower.toSet().length, lower.length);
+    });
+
+    test('没有别名的词原样返回', () {
+      expect(expandSearchQuery('某个不存在的词'), ['某个不存在的词']);
+    });
+
+    test('空词返回空', () {
+      expect(expandSearchQuery('   '), isEmpty);
+    });
+
+    test('最多 4 个查询词（控制请求数）', () {
+      expect(expandSearchQuery('eva').length, lessThanOrEqualTo(4));
     });
   });
 }

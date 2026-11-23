@@ -188,7 +188,35 @@ CreateMutexW(nullptr, TRUE, L"Local\\anime_client_single_instance")
 
 截图：`docs/assets/s4/6-match-gate.png`。
 
-## 十二、下一步（拿到 key 后）
+
+## 十二、S4.6 搜索别名扩展（"EVA 只有 4 条"）
+
+用户反馈：搜 `EVA` 只出 4 条，但 EVA 光剧场版就好几部。
+
+**不是匹配错，是字面搜索搜不到**。实测：
+
+| 搜索词 | B 站 | AniList |
+|---|---|---|
+| `EVA` | 1 条 | **2 条** |
+| `Evangelion` | — | **14 条** |
+| `福音战士` | 1 条 | **0 条**（AniList 没有中文索引） |
+
+AniList 的标题是 `Shin Seiki Evangelion` / `Evangelion Shin Movie: Jo`，
+没有一条叫 "EVA"；B 站同理。
+
+**处理**：新增 `search_aliases.dart` 别名表 + `expandSearchQuery()`：
+
+- 原词永远排第一，最多展开到 4 个查询词（控制请求数）；
+- 先查原词（含分页），再用扩展词补第一页，合并去重；
+- 表里放了 25 组高确定性别名（EVA/巨人/咒术/鬼灭/无职/芙莉莲/孤独摇滚/药屋…），
+  宁可少加也不加错。
+
+**效果**（截图 `docs/assets/s4/7-search-eva.png`）：
+`EVA` 从 **4 条 → 14 条**，包含 TV、旧剧场版 2 部、新剧场版 序/破/Q/终、OVA、特番。
+
+代价：扩展词会多发 2–6 个请求（只在第一页），实测首屏仍在 1.5s 内。
+
+## 十三、下一步（拿到 key 后）
 
 1. **弹弹play**：实现 `X-AppId`/`X-Timestamp`/`X-Signature` 签名，接入搜索 + 弹幕；
 2. 港澳台：优先走弹弹play（他们覆盖港澳台）；
