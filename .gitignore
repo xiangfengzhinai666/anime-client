@@ -12,6 +12,7 @@ pubspec.lock.bak
 *.exe
 *.pdb
 *.dll
+!windows/third_party/*.dll
 *.so
 *.dylib
 *.apk

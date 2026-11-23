@@ -139,6 +139,25 @@ dart run build_runner watch          # 开发时常驻
 **已知接口缺陷**：`pgc/season/index/result` 会忽略 `year` 参数（三个年份返回同一份结果），
 所以索引页没有年份筛选，首页用「正在连载 / 高分推荐」两个确实生效的维度。
 
+
+## SQLite 依赖（重要，别乱升级）
+
+项目**故意**把 `sqlite3` 锁在 `^2.7.0`，并且**没有** `sqlite3_flutter_libs`：
+
+| 方案 | 构建时要联网吗 | 本机可用 |
+|---|---|---|
+| `sqlite3 3.x` + native assets | 从 GitHub Releases 下载 DLL | ❌ 直连 GitHub 不通 |
+| `sqlite3 2.x` + `sqlite3_flutter_libs` | 从 sqlite.org 下载源码再编译 | ❌ 站点不稳定，干净构建会挂 |
+| **`sqlite3 2.x` + 仓库自带 DLL（当前）** | **否** | ✅ |
+
+当前做法：
+- DLL 放在 `windows/third_party/sqlite3.dll`（1.4 MB，随仓库提交）；
+- `windows/runner/CMakeLists.txt` 在构建后把它拷到产物目录；
+- 测试进程用 Windows 自带的 `winsqlite3.dll`（见 `test/test_helpers.dart`）。
+
+**升级 drift 前先确认**：新版本是否要求 `sqlite3 ^3.x`（会重新引入 native assets 下载）。
+真要升级，需同时准备离线 DLL 方案，否则干净构建会失败。
+
 ## 已知坑
 
 | 现象 | 原因 | 处理 |

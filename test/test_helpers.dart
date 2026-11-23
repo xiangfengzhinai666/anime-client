@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'dart:ffi' show DynamicLibrary;
+
 import 'package:anime_client/app/providers/app_providers.dart';
 import 'package:anime_client/core/images/cover_cache.dart';
 import 'package:anime_client/core/storage/app_database.dart';
@@ -10,8 +12,26 @@ import 'package:anime_client/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/open.dart';
 
-AppDatabase newMemoryDatabase() => AppDatabase.memory();
+/// sqlite3 2.x 不自带二进制，测试进程里用 Windows 自带的 winsqlite3.dll。
+bool _sqliteConfigured = false;
+
+void configureTestSqlite() {
+  if (_sqliteConfigured) return;
+  _sqliteConfigured = true;
+  if (Platform.isWindows) {
+    open.overrideFor(
+      OperatingSystem.windows,
+      () => DynamicLibrary.open('winsqlite3.dll'),
+    );
+  }
+}
+
+AppDatabase newMemoryDatabase() {
+  configureTestSqlite();
+  return AppDatabase.memory();
+}
 
 /// 测试用番剧数据。
 final List<AnimeSummary> demoAnime = [

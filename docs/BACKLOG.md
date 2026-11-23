@@ -17,6 +17,9 @@
 
 ## 其它延后项
 
+| Android 端的 SQLite | S2 复验 | Windows 改为仓库自带 DLL、移除了 `sqlite3_flutter_libs`；做 Android 时需重新引入或用 so |
+
+
 | 项 | 出处 | 说明 |
 |---|---|---|
 | 封面下载时转码压缩 | S2 报告 | 现在原图 PNG 平均约 860 KB，缓存上限 200 MB；S6 打包时顺手做 |

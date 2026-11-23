@@ -1660,16 +1660,7 @@ class $$HistoryEntriesTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$HistoryEntriesTable, HistoryEntry>(table),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $HistoryEntriesTable,
-                    HistoryEntry
-                  >(db, table, e),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -1886,16 +1877,7 @@ class $$FavoriteEntriesTableTableManager
                 updatedAt: updatedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$FavoriteEntriesTable, FavoriteEntry>(table),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $FavoriteEntriesTable,
-                    FavoriteEntry
-                  >(db, table, e),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -2019,11 +2001,13 @@ class $$SettingEntriesTableTableManager
               $$SettingEntriesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$SettingEntriesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> key = const Value.absent(),
-            Value<String> value = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) => SettingEntriesCompanion(key: key, value: value, rowid: rowid),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) =>
+                  SettingEntriesCompanion(key: key, value: value, rowid: rowid),
           createCompanionCallback:
               ({
                 required String key,
@@ -2035,16 +2019,7 @@ class $$SettingEntriesTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$SettingEntriesTable, SettingEntry>(table),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $SettingEntriesTable,
-                    SettingEntry
-                  >(db, table, e),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -2220,18 +2195,7 @@ class $$CatalogCacheEntriesTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$CatalogCacheEntriesTable, CatalogCacheEntry>(
-                    table,
-                  ),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $CatalogCacheEntriesTable,
-                    CatalogCacheEntry
-                  >(db, table, e),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+﻿cmake_minimum_required(VERSION 3.14)
 project(runner LANGUAGES CXX)
 
 # Define the application target. To change its name, change BINARY_NAME in the
@@ -38,3 +38,14 @@ target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)
+# ---------------------------------------------------------------------------
+# 随包携带 SQLite 动态库。
+# 说明：sqlite3_flutter_libs 会在构建时从 sqlite.org 下载源码并编译，
+# 本机网络访问该站不稳定，会让"干净构建"卡住；因此改为仓库内置 sqlite3.dll，
+# 构建后直接拷到产物目录（package:sqlite3 会优先从 exe 同目录加载）。
+add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/sqlite3.dll"
+    "$<TARGET_FILE_DIR:${BINARY_NAME}>/sqlite3.dll"
+  COMMENT "Bundling vendored sqlite3.dll"
+)
