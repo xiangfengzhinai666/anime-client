@@ -106,6 +106,29 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<AnimeDetail> detail(String internalId, {bool force = false}) async {
     if (error != null) throw error!;
+    // 次元城条目要带 sectionId，才能测"可播放"分支
+    if (internalId.startsWith('cycani:')) {
+      return AnimeDetail(
+        summary: AnimeSummary(
+          source: CatalogSource.cycani,
+          sourceId: internalId.split(':').last,
+          title: detailResult.summary.title,
+          cover: detailResult.summary.cover,
+          year: detailResult.summary.year,
+          score: detailResult.summary.score,
+        ),
+        synopsis: detailResult.synopsis,
+        episodes: [
+          for (var i = 1; i <= 2; i++)
+            AnimeEpisode(
+              index: i,
+              title: '第 $i 集',
+              sectionId: '900$i',
+            ),
+        ],
+        fetchedAt: detailResult.fetchedAt,
+      );
+    }
     return detailResult;
   }
 

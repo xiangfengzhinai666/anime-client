@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +9,9 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../app/providers/app_providers.dart';
 import '../../app/theme/app_tokens.dart';
+import '../../core/logging/app_logger.dart';
 import '../catalog/catalog_providers.dart';
 import '../catalog/data/catalog_models.dart';
 import 'data/play_models.dart';
@@ -41,6 +44,14 @@ class PlayerPage extends ConsumerStatefulWidget {
 class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   late final Player _player;
   late final VideoController _controller;
+  late final void Function({
+    required AnimeSummary? summary,
+    required int episode,
+    required int positionSeconds,
+    required int durationSeconds,
+    required String episodeTitle,
+  }) _saveProgress;
+  late final AppLogger _log;
 
   final List<StreamSubscription<dynamic>> _subs = [];
 
@@ -57,6 +68,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   Duration _duration = Duration.zero;
   double _volume = 100;
   double _speed = 1.0;
+  double _speedBeforeHold = 1.0;
+  bool _holdingFastForward = false;
 
   Timer? _hideTimer;
   Timer? _saveTimer;
@@ -75,6 +88,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     windowManager.addListener(this);
     _player = Player();
     _controller = VideoController(_player);
+    // 提前拿好保存函数：dispose 阶段再用 ref 会抛异常（导致进度没写进去）
+    _saveProgress = ref.read(saveProgressProvider);
+    _log = ref.read(appLoggerProvider);
     _bindPlayer();
     _load();
   }
@@ -142,8 +158,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
       final sectionId = target.sectionId;
       if (sectionId.isEmpty) {
         setState(() {
-          _errorTitle = '这个源暂时不能播放';
-          _error = '该分集没有可用的播放 id（只有次元城源支持播放）';
+          _errorTitle = '这条只有元数据，不能播放';
+          _error = 'B 站 / AniList 条目只提供信息；请到详情页点「在次元城找这部」，'
+              '或用「设置 → 打开本地视频」播放本地文件';
         });
         return;
       }
@@ -185,11 +202,38 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   }
 
   Future<void> _startPlayback(String url, {required int resume}) async {
+    _log.debug('play', 'open resume=$resume url=${url.split('?').first}');
     await _player.open(Media(url), play: true);
     if (resume > 0) {
-      await _player.seek(Duration(seconds: resume));
+      // 媒体刚 open 时 seek 会被忽略，等 duration 出来再跳
+      final ready = await _waitForDuration(const Duration(seconds: 10));
+      _log.debug('play', 'duration ready=$ready current=$_duration');
+      if (ready && mounted) {
+        await _player.seek(Duration(seconds: resume));
+        if (mounted) setState(() => _position = Duration(seconds: resume));
+      }
     }
     _scheduleHide();
+    _save();
+  }
+
+  /// 等播放器拿到时长（说明已解码出媒体），最多等 [timeout]。
+  Future<bool> _waitForDuration(Duration timeout) async {
+    if (_duration > Duration.zero) return true;
+    final completer = Completer<bool>();
+    late final StreamSubscription<Duration> sub;
+    sub = _player.stream.duration.listen((value) {
+      if (value > Duration.zero && !completer.isCompleted) {
+        completer.complete(true);
+      }
+    });
+    final timer = Timer(timeout, () {
+      if (!completer.isCompleted) completer.complete(false);
+    });
+    final result = await completer.future;
+    timer.cancel();
+    await sub.cancel();
+    return result;
   }
 
   void _startSaveTimer() {
@@ -202,7 +246,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     final ep = _episode;
     if (detail == null || ep == null) return;
     if (_position.inSeconds <= 0) return;
-    ref.read(saveProgressProvider)(
+    _saveProgress(
       summary: detail.summary,
       episode: ep.index,
       positionSeconds: _position.inSeconds,
@@ -220,6 +264,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
     for (final sub in _subs) {
       sub.cancel();
     }
+    // 先停播、再释放控制器、最后 dispose 播放器。
+    // 顺序不对时 mpv 可能继续在后台出声（"退出页面还在播"的根因）。
+    _player.stop().catchError((_) {});
     _player.dispose();
     super.dispose();
   }
@@ -237,6 +284,22 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
   void _showControls() {
     setState(() => _controlsVisible = true);
     _scheduleHide();
+  }
+
+  /// 按住右键 → 2 倍速；松开还原（常见的"按住快进"手势）。
+  Future<void> _holdFastForward() async {
+    if (_holdingFastForward) return;
+    _holdingFastForward = true;
+    _speedBeforeHold = _speed;
+    await _player.setRate(2.0);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _releaseFastForward() async {
+    if (!_holdingFastForward) return;
+    _holdingFastForward = false;
+    await _player.setRate(_speedBeforeHold == 2.0 ? 1.0 : _speedBeforeHold);
+    if (mounted) setState(() {});
   }
 
   void _togglePlay() {
@@ -337,7 +400,17 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
             child: GestureDetector(
               onTap: _showControls,
               onDoubleTap: _toggleFullscreen,
-              child: Stack(
+              child: Listener(
+                onPointerDown: (event) {
+                  if (event.buttons == kSecondaryMouseButton) {
+                    _holdFastForward();
+                  }
+                },
+                onPointerUp: (event) {
+                  if (_holdingFastForward) _releaseFastForward();
+                },
+                onPointerCancel: (_) => _releaseFastForward(),
+                child: Stack(
                 fit: StackFit.expand,
                 children: [
                   if (_ready)
@@ -373,6 +446,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> with WindowListener {
                     ),
                   ),
                 ],
+              ),
               ),
             ),
           ),

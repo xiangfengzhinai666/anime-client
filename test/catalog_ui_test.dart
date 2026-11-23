@@ -32,7 +32,8 @@ void main() {
     expect(find.text('简介'), findsOneWidget);
     expect(find.textContaining('寿命逾千年'), findsOneWidget);
     expect(find.text('剧集'), findsOneWidget);
-    expect(find.text('从第 1 集开始'), findsOneWidget);
+    // demo 条目来自 B 站：只提供元数据，播放按钮应引导去次元城
+    expect(find.text('在次元城找这部'), findsOneWidget);
 
     // 分集按钮存在（第 1/2 集）
     expect(find.widgetWithText(OutlinedButton, '1'), findsWidgets);
