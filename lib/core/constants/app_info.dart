@@ -10,5 +10,5 @@ class AppInfo {
   static const String version = '0.1.0';
   static const String description = '追番客户端（个人自用）';
   static const String repository = 'https://github.com/xiangfengzhinai666/anime-client';
-  static const String stage = 'S1';
+  static const String stage = 'S3';
 }

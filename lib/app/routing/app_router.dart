@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/utils/dev_env.dart';
 import '../../features/catalog/detail_page.dart';
+import '../../features/play/player_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../shell/app_shell.dart';
 import 'app_tabs.dart';
@@ -40,6 +41,21 @@ GoRouter buildRouter({int initialTab = 0}) {
         path: '/settings',
         name: 'settings',
         builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: '/watch/local',
+        name: 'localPlayer',
+        builder: (context, state) => PlayerPage(
+          localPath: state.uri.queryParameters['path'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/watch/:id/:ep',
+        name: 'player',
+        builder: (context, state) => PlayerPage(
+          internalId: Uri.decodeComponent(state.pathParameters['id'] ?? ''),
+          episode: int.tryParse(state.pathParameters['ep'] ?? '') ?? 1,
+        ),
       ),
       GoRoute(
         path: '/bangumi/:id',

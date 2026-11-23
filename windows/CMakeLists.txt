@@ -1,4 +1,4 @@
-# Project-level configuration.
+﻿# Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
 project(anime_client LANGUAGES CXX)
 
@@ -55,6 +55,20 @@ add_subdirectory("runner")
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
+# ---------------------------------------------------------------------------
+# 预置 media_kit 的 libmpv / ANGLE 归档，避免配置阶段从 GitHub 下载。
+# media_kit_libs_windows_video 会检查 ${CMAKE_BINARY_DIR} 下是否已有归档并校验 MD5，
+# 有则跳过下载，直接解压使用。仓库里带了对应文件（约 14 MB），保证离线可构建。
+foreach(_mk_archive "mpv-dev-x86_64-20230924-git-652a1dd.7z" "ANGLE.7z")
+  if(NOT EXISTS "${CMAKE_BINARY_DIR}/${_mk_archive}")
+    configure_file(
+      "${CMAKE_CURRENT_SOURCE_DIR}/third_party/mpv/${_mk_archive}"
+      "${CMAKE_BINARY_DIR}/${_mk_archive}"
+      COPYONLY
+    )
+    message(STATUS "Seeded ${_mk_archive} from third_party/mpv")
+  endif()
+endforeach()
 include(flutter/generated_plugins.cmake)
 
 

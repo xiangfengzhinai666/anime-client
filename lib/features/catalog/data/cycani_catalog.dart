@@ -141,6 +141,7 @@ class CycaniCatalog {
           episodes.add(AnimeEpisode(
             index: index,
             title: title.isEmpty ? '第 $index 集' : title,
+            sectionId: '${ep['id'] ?? ''}',
           ));
         }
       } catch (_) {
@@ -155,7 +156,11 @@ class CycaniCatalog {
         final ep = _map(s);
         final title = '${ep['title'] ?? ''}';
         final index = _indexFromTitle(title, episodes.length + 1);
-        episodes.add(AnimeEpisode(index: index, title: title));
+        episodes.add(AnimeEpisode(
+          index: index,
+          title: title,
+          sectionId: '${ep['id'] ?? ''}',
+        ));
       }
     }
 

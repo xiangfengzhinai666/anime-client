@@ -178,7 +178,14 @@ class CatalogRepositoryImpl implements CatalogRepository {
       final cached = await cache.get(internalId);
       if (cached != null) {
         try {
-          return AnimeDetail.fromJson(cached);
+          final detail = AnimeDetail.fromJson(cached);
+          // 次元城的分集必须带 sectionId 才能换播放地址。
+          // 旧版本缓存里的分集没有这个字段，遇到就当作过期重新拉。
+          final staleCycani = detail.summary.source == CatalogSource.cycani &&
+              detail.episodes.isNotEmpty &&
+              detail.episodes.every((e) => e.sectionId.isEmpty);
+          if (!staleCycani) return detail;
+          logger.debug('catalog', '缓存缺少 sectionId，重新拉取 $internalId');
         } catch (e) {
           logger.warn('catalog', '缓存解析失败，重新拉取：$e');
         }

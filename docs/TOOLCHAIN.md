@@ -158,6 +158,29 @@ dart run build_runner watch          # 开发时常驻
 **升级 drift 前先确认**：新版本是否要求 `sqlite3 ^3.x`（会重新引入 native assets 下载）。
 真要升级，需同时准备离线 DLL 方案，否则干净构建会失败。
 
+
+## media_kit / libmpv（S3）
+
+`media_kit_libs_windows_video` 在 CMake 配置阶段会从 GitHub Releases 下载
+libmpv 与 ANGLE 归档。本机直连 GitHub 不通，所以：
+
+- 归档放在 `windows/third_party/mpv/`（`mpv-dev-x86_64-20230924-git-652a1dd.7z`、
+  `ANGLE.7z`，共约 14 MB）；
+- `windows/CMakeLists.txt` 在加载插件前把它们 `configure_file` 到 `${CMAKE_BINARY_DIR}`；
+- 插件校验 MD5（`a832ef24…` / `e866f13e…`）通过后直接解压，不联网。
+
+**升级 media_kit 前先确认**：新版本是否换了归档文件名或 MD5，换了就要同步更新仓库里的文件。
+
+## 窗口/全屏依赖
+
+`window_manager` 锁在 **0.5.x**：0.6.0 是基于 nativeapi 的重写版，API 不兼容
+（没有 `windowManager` 全局对象）。
+
+## 凭据存储
+
+`flutter_secure_storage` 的 Windows 实现需要 ATL（本机 VS Build Tools 未安装，编译失败）。
+改用 `win32` 直接调 Windows 凭据管理器（DPAPI 加密），见 `lib/core/security/token_vault.dart`。
+
 ## 已知坑
 
 | 现象 | 原因 | 处理 |

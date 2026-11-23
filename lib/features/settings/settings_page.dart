@@ -1,6 +1,8 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/providers/app_providers.dart';
 import '../../app/theme/app_tokens.dart';
@@ -8,6 +10,8 @@ import '../../app/widgets/section_header.dart';
 import '../../core/constants/app_info.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/utils/app_paths.dart';
+import '../play/play_providers.dart';
+import '../play/widgets/cycani_login_dialog.dart';
 
 /// 设置页（全屏二级页）。
 ///
@@ -65,6 +69,18 @@ class SettingsPage extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: AppSpacing.xl),
+              const SectionHeader(
+                title: '账号',
+                description: '登录态只保存在本机',
+              ),
+              _Card(child: const _AccountTile()),
+              const SizedBox(height: AppSpacing.xl),
+              const SectionHeader(
+                title: '播放',
+                description: '不需要账号也能播放本地文件',
+              ),
+              _Card(child: const _LocalFileTile()),
               const SizedBox(height: AppSpacing.xl),
               const SectionHeader(title: '数据', description: '全部保存在本机'),
               _Card(
@@ -268,6 +284,65 @@ class _RecentLogs extends StatelessWidget {
             ],
           ),
         );
+      },
+    );
+  }
+}
+
+/// 次元城账号：显示登录态，可登录/退出。
+class _AccountTile extends ConsumerWidget {
+  const _AccountTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(cycaniSessionProvider);
+    final theme = Theme.of(context);
+    final loggedIn = session != null;
+    return ListTile(
+      leading: Icon(
+        loggedIn ? Icons.verified_user_outlined : Icons.person_outline,
+        color: loggedIn ? theme.colorScheme.primary : null,
+      ),
+      title: Text(loggedIn ? session.username : '未登录'),
+      subtitle: Text(
+        loggedIn
+            ? '次元城 · 已登录${session.nickname.isEmpty ? '' : '（${session.nickname}）'}'
+            : '播放次元城线路需要登录',
+      ),
+      trailing: loggedIn
+          ? TextButton(
+              onPressed: () => ref.read(cycaniSessionProvider.notifier).logout(),
+              child: const Text('退出登录'),
+            )
+          : FilledButton.tonal(
+              onPressed: () => CycaniLoginDialog.show(context),
+              child: const Text('登录'),
+            ),
+    );
+  }
+}
+
+/// 打开本地视频（不需要任何账号）。
+class _LocalFileTile extends StatelessWidget {
+  const _LocalFileTile();
+
+  static const _group = XTypeGroup(
+    label: '视频',
+    extensions: ['mp4', 'mkv', 'webm', 'avi', 'mov', 'flv', 'ts', 'm4v'],
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.folder_open_rounded),
+      title: const Text('打开本地视频'),
+      subtitle: const Text('支持 mp4 / mkv / webm 等常见格式'),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: () async {
+        final file = await openFile(acceptedTypeGroups: const [_group]);
+        if (file == null) return;
+        if (!context.mounted) return;
+        context.push('/watch/local?path=${Uri.encodeQueryComponent(file.path)}');
       },
     );
   }

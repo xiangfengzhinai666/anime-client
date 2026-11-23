@@ -90,6 +90,7 @@ class AnimeEpisode {
     this.cid = 0,
     this.durationSeconds = 0,
     this.badge = '',
+    this.sectionId = '',
   });
 
   final int index;
@@ -100,6 +101,9 @@ class AnimeEpisode {
   final int cid;
   final int durationSeconds;
   final String badge;
+
+  /// 源站的分集 id（次元城用它换播放地址；B 站/AniList 为空）。
+  final String sectionId;
 
   Map<String, dynamic> toJson() => {
         'index': index,

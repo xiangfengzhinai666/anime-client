@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme/app_tokens.dart';
 import '../../app/widgets/empty_state.dart';
@@ -12,6 +13,11 @@ import 'widgets/cover_image.dart';
 ///
 /// 数据策略：主数据来自 B 站/AniList（带 6 小时缓存），
 /// 角色表由 AniList 异步补充（失败不影响主内容）。
+/// 跳转到播放页（路由里 episode 是 1 基序号）。
+void _playEpisode(BuildContext context, String internalId, int episode) {
+  context.push('/watch/${Uri.encodeComponent(internalId)}/$episode');
+}
+
 class AnimeDetailPage extends ConsumerWidget {
   const AnimeDetailPage({super.key, required this.internalId});
 
@@ -123,7 +129,11 @@ class _DetailBody extends ConsumerWidget {
                   compact: true,
                 )
               else
-                _EpisodeGrid(episodes: detail.episodes),
+                _EpisodeGrid(
+                  episodes: detail.episodes,
+                  onPlay: (index) =>
+                      _playEpisode(context, detail.summary.id, index),
+                ),
               const SizedBox(height: AppSpacing.xl),
               _EnrichmentSection(internalId: internalId),
             ],
@@ -202,9 +212,13 @@ class _Header extends StatelessWidget {
               Row(
                 children: [
                   FilledButton.icon(
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('播放器将在 S3 接入')),
-                    ),
+                    onPressed: detail.episodes.isEmpty
+                        ? null
+                        : () => _playEpisode(
+                              context,
+                              detail.summary.id,
+                              detail.episodes.first.index,
+                            ),
                     icon: const Icon(Icons.play_arrow_rounded),
                     label: Text(
                       detail.episodes.isEmpty ? '暂无剧集' : '从第 1 集开始',
@@ -285,9 +299,10 @@ class _Stat extends StatelessWidget {
 }
 
 class _EpisodeGrid extends StatelessWidget {
-  const _EpisodeGrid({required this.episodes});
+  const _EpisodeGrid({required this.episodes, required this.onPlay});
 
   final List<AnimeEpisode> episodes;
+  final ValueChanged<int> onPlay;
 
   @override
   Widget build(BuildContext context) {
@@ -299,11 +314,7 @@ class _EpisodeGrid extends StatelessWidget {
           Tooltip(
             message: ep.title,
             child: OutlinedButton(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('第 ${ep.index} 集「${ep.title}」：播放器在 S3 接入'),
-                ),
-              ),
+              onPressed: () => onPlay(ep.index),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(64, 36),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
