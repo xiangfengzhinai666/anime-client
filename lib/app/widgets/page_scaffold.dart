@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../core/utils/dev_env.dart';
 import '../theme/app_tokens.dart';
 
 /// 页面骨架：统一标题区 + 内容区边距 + 滚动行为。
 ///
 /// 所有一级页面都用它，保证标题字号、间距、滚动一致。
-class PageScaffold extends StatelessWidget {
+class PageScaffold extends StatefulWidget {
   const PageScaffold({
     super.key,
     required this.title,
@@ -24,12 +25,26 @@ class PageScaffold extends StatelessWidget {
   final EdgeInsets padding;
 
   @override
+  State<PageScaffold> createState() => _PageScaffoldState();
+}
+
+class _PageScaffoldState extends State<PageScaffold> {
+  late final ScrollController _controller =
+      ScrollController(initialScrollOffset: DevEnv.initialScrollOffset);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final body = child ?? const SizedBox.shrink();
+    final body = widget.child ?? const SizedBox.shrink();
 
     return Padding(
-      padding: padding,
+      padding: widget.padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -40,24 +55,25 @@ class PageScaffold extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: theme.textTheme.headlineMedium),
-                    if (subtitle != null) ...[
+                    Text(widget.title, style: theme.textTheme.headlineMedium),
+                    if (widget.subtitle != null) ...[
                       const SizedBox(height: AppSpacing.xs),
-                      Text(subtitle!, style: theme.textTheme.bodySmall),
+                      Text(widget.subtitle!, style: theme.textTheme.bodySmall),
                     ],
                   ],
                 ),
               ),
-              if (actions.isNotEmpty) ...[
+              if (widget.actions.isNotEmpty) ...[
                 const SizedBox(width: AppSpacing.md),
-                Row(mainAxisSize: MainAxisSize.min, children: actions),
+                Row(mainAxisSize: MainAxisSize.min, children: widget.actions),
               ],
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
           Expanded(
-            child: scrollable
+            child: widget.scrollable
                 ? SingleChildScrollView(
+                    controller: _controller,
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.xl),
                       child: body,

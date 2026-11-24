@@ -129,16 +129,16 @@ class _FavoriteCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final internalId = '${item.source}:${item.bangumiId}';
 
-    Future<void> move(FavoriteCategory? target) async {
+    Future<void> move(String value) async {
       final dao = ref.read(favoritesDaoProvider);
-      if (target == null) {
+      if (value == '__remove__') {
         await dao.remove(item.bangumiId);
       } else {
         await dao.upsert(
           bangumiId: item.bangumiId,
           title: item.title,
           cover: item.cover,
-          category: target,
+          category: FavoriteCategory.fromKey(value),
           totalEpisodes: item.totalEpisodes,
           source: item.source,
         );
@@ -184,20 +184,20 @@ class _FavoriteCard extends ConsumerWidget {
         Positioned(
           right: 0,
           top: 0,
-          child: PopupMenuButton<FavoriteCategory?>(
+          child: PopupMenuButton<String>(
             tooltip: '更多',
             icon: const Icon(Icons.more_vert_rounded, size: 18),
             onSelected: move,
             itemBuilder: (context) => [
               for (final target in FavoriteCategory.values)
                 PopupMenuItem(
-                  value: target,
+                  value: target.key,
                   child: Text(
                     target == category ? '${target.label}（当前）' : target.label,
                   ),
                 ),
               const PopupMenuDivider(),
-              const PopupMenuItem(value: null, child: Text('取消追番')),
+              const PopupMenuItem(value: '__remove__', child: Text('取消追番')),
             ],
           ),
         ),

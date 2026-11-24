@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers/app_providers.dart';
 import '../../app/theme/app_tokens.dart';
 import '../../app/widgets/empty_state.dart';
-import '../../app/widgets/page_scaffold.dart';
 import '../../core/storage/app_database.dart';
 import '../catalog/widgets/cover_image.dart';
 import 'history_utils.dart';
@@ -23,46 +22,77 @@ class HistoryPage extends ConsumerWidget {
     final history = ref.watch(recentHistoryProvider);
 
     // 这个页面在 shell 之外，需要自己给 Scaffold（否则背景是白的）
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: PageScaffold(
-        scrollable: false,
-      title: '观看历史',
-      subtitle: '只存在本机，按番去重',
-      actions: [
-        IconButton(
-          tooltip: '清空历史',
-          onPressed: () => _confirmClear(context, ref),
-          icon: const Icon(Icons.delete_sweep_outlined),
-        ),
-      ],
-      child: history.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => EmptyState(
-          icon: Icons.error_outline_rounded,
-          title: '读取历史失败',
-          description: '$error',
-        ),
-        data: (items) {
-          final latest = latestPerShow(items);
-          if (latest.isEmpty) {
-            return EmptyState(
-              icon: Icons.history_rounded,
-              title: '还没有观看记录',
-              description: '看过的番会出现在这里，并按番只保留最近一集',
-              action: FilledButton.tonal(
-                onPressed: () => context.go('/browse'),
-                child: const Text('去索引看看'),
-              ),
-            );
-          }
-          return ListView.separated(
-            itemCount: latest.length,
-            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-            itemBuilder: (context, index) =>
-                _HistoryRow(item: latest[index], ref: ref),
-          );
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        // 深链接进来时没法 pop，兜底回「我的」，保证总有返回键
+        leading: IconButton(
+          tooltip: '返回',
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/profile');
+            }
           },
+        ),
+        title: const Text('观看历史'),
+        actions: [
+          IconButton(
+            tooltip: '清空历史',
+            onPressed: () => _confirmClear(context, ref),
+            icon: const Icon(Icons.delete_sweep_outlined),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.page.left,
+          vertical: AppSpacing.md,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '只存在本机 · 按番去重 · 点一行从那一集继续播',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Expanded(
+              child: history.when(
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
+                error: (error, _) => EmptyState(
+                  icon: Icons.error_outline_rounded,
+                  title: '读取历史失败',
+                  description: '$error',
+                ),
+                data: (items) {
+                  final latest = latestPerShow(items);
+                  if (latest.isEmpty) {
+                    return EmptyState(
+                      icon: Icons.history_rounded,
+                      title: '还没有观看记录',
+                      description: '看过的番会出现在这里，并按番只保留最近一集',
+                      action: FilledButton.tonal(
+                        onPressed: () => context.go('/browse'),
+                        child: const Text('去索引看看'),
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    itemCount: latest.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (context, index) =>
+                        _HistoryRow(item: latest[index], ref: ref),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

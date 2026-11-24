@@ -16,6 +16,14 @@ class DevEnv {
   /// 截图时自动填好搜索词（仅搜索页使用）。
   static const String queryKey = 'DSH_SHOT_QUERY';
 
+  /// 截图时预先滚动到某个位置（像素），用于截取长页面的下半部分。
+  static const String scrollKey = 'DSH_SHOT_SCROLL';
+
+  static double get initialScrollOffset {
+    final value = double.tryParse(_env[scrollKey] ?? '');
+    return (value == null || value < 0) ? 0 : value;
+  }
+
   static Map<String, String> get _env =>
       Platform.isWindows || Platform.isMacOS || Platform.isLinux
           ? Platform.environment

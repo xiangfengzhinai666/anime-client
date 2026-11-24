@@ -474,36 +474,36 @@ class _FavoriteButton extends ConsumerWidget {
     }
     final status = ref.watch(favoriteStatusProvider(id));
 
-    Future<void> setCategory(FavoriteCategory? category) async {
+    Future<void> setCategory(String value) async {
       final dao = ref.read(favoritesDaoProvider);
-      if (category == null) {
+      if (value == '__remove__') {
         await dao.remove(id);
       } else {
         await dao.upsert(
           bangumiId: id,
           title: detail.summary.title,
           cover: detail.summary.cover,
-          category: category,
+          category: FavoriteCategory.fromKey(value),
           totalEpisodes: detail.summary.totalEpisodes ?? 0,
           source: detail.summary.source.key,
         );
       }
     }
 
-    return PopupMenuButton<FavoriteCategory?>(
+    return PopupMenuButton<String>(
       tooltip: '追番',
       onSelected: setCategory,
       itemBuilder: (context) => [
         for (final category in FavoriteCategory.values)
           PopupMenuItem(
-            value: category,
+            value: category.key,
             child: Text(
               category == status ? '${category.label}（当前）' : category.label,
             ),
           ),
         if (status != null) const PopupMenuDivider(),
         if (status != null)
-          const PopupMenuItem(value: null, child: Text('取消追番')),
+          const PopupMenuItem(value: '__remove__', child: Text('取消追番')),
       ],
       child: OutlinedButton.icon(
         // 点击交给外层 PopupMenuButton，这里只是外观；用主题色保证看起来可点

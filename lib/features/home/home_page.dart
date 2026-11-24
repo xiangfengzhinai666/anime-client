@@ -8,6 +8,7 @@ import '../../app/widgets/empty_state.dart';
 import '../../app/widgets/page_scaffold.dart';
 import '../../app/widgets/section_header.dart';
 import '../catalog/catalog_providers.dart';
+import '../catalog/widgets/cover_image.dart';
 import '../history/history_utils.dart';
 import '../catalog/data/catalog_merge.dart';
 import '../catalog/data/catalog_models.dart';
@@ -110,10 +111,14 @@ class HomePage extends ConsumerWidget {
                       title: item.title.isEmpty
                           ? '番剧 ${item.bangumiId}'
                           : item.title,
+                      cover: item.cover,
                       episode: item.episode,
                       progress: item.durationSeconds == 0
                           ? 0
                           : item.positionSeconds / item.durationSeconds,
+                      onTap: () => context.push(
+                        '/watch/${Uri.encodeComponent('${item.source}:${item.bangumiId}')}/${item.episode}',
+                      ),
                     ),
                 ],
               );
@@ -250,56 +255,84 @@ class _SkeletonGrid extends StatelessWidget {
 class _HistoryRow extends StatelessWidget {
   const _HistoryRow({
     required this.title,
+    required this.cover,
     required this.episode,
     required this.progress,
+    required this.onTap,
   });
 
   final String title;
+  final String cover;
   final int episode;
   final double progress;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      margin: AppSpacing.itemGap,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: AppRadius.mdAll,
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 40,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: AppRadius.smAll,
-            ),
-            child: Icon(Icons.play_arrow_rounded,
-                color: theme.colorScheme.onSurfaceVariant),
+        onTap: onTap,
+        child: Container(
+          margin: AppSpacing.itemGap,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: AppRadius.mdAll,
+            border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium),
-                const SizedBox(height: 2),
-                Text(
-                  '第 $episode 集 · ${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%',
-                  style: theme.textTheme.bodySmall,
+          child: Row(
+            children: [
+              // 封面缩略图（和历史页一致）；没有封面就退回图标
+              SizedBox(
+                width: 96,
+                height: 54,
+                child: ClipRRect(
+                  borderRadius: AppRadius.smAll,
+                  child: cover.isEmpty
+                      ? Container(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.movie_outlined,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                      : CoverImage(url: cover, fit: BoxFit.cover, radius: 0),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      '第 $episode 集 · ${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: AppRadius.pillAll,
+                      child: LinearProgressIndicator(
+                        value: progress.clamp(0.0, 1.0),
+                        minHeight: 3,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
           ),
-          const Icon(Icons.chevron_right_rounded),
-        ],
+        ),
       ),
     );
   }
