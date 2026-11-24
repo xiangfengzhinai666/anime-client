@@ -70,9 +70,16 @@ class HistoryDao {
     return query.get();
   }
 
-  Future<HistoryEntry?> find(int bangumiId, int episode) {
+  Future<HistoryEntry?> find(
+    int bangumiId,
+    int episode, {
+    String source = 'cycani',
+  }) {
     final query = _db.select(_db.historyEntries)
-      ..where((t) => t.bangumiId.equals(bangumiId) & t.episode.equals(episode));
+      ..where((t) =>
+          t.bangumiId.equals(bangumiId) &
+          t.episode.equals(episode) &
+          t.source.equals(source));
     return query.getSingleOrNull();
   }
 
@@ -83,9 +90,16 @@ class HistoryDao {
     return row.read(expr) ?? 0;
   }
 
-  Future<int> removeEpisode(int bangumiId, int episode) {
+  Future<int> removeEpisode(
+    int bangumiId,
+    int episode, {
+    String source = 'cycani',
+  }) {
     final stmt = _db.delete(_db.historyEntries)
-      ..where((t) => t.bangumiId.equals(bangumiId) & t.episode.equals(episode));
+      ..where((t) =>
+          t.bangumiId.equals(bangumiId) &
+          t.episode.equals(episode) &
+          t.source.equals(source));
     return stmt.go();
   }
 
@@ -108,7 +122,7 @@ class FavoritesDao {
   }) {
     return _db.into(_db.favoriteEntries).insertOnConflictUpdate(
           FavoriteEntriesCompanion.insert(
-            bangumiId: Value(bangumiId),
+            bangumiId: bangumiId,
             title: title,
             cover: Value(cover),
             category: Value(category.key),
@@ -119,15 +133,17 @@ class FavoritesDao {
         );
   }
 
-  Future<int> remove(int bangumiId) {
-    final stmt =
-        _db.delete(_db.favoriteEntries)..where((t) => t.bangumiId.equals(bangumiId));
+  Future<int> remove(int bangumiId, {String source = 'cycani'}) {
+    final stmt = _db.delete(_db.favoriteEntries)
+      ..where((t) =>
+          t.bangumiId.equals(bangumiId) & t.source.equals(source));
     return stmt.go();
   }
 
-  Future<FavoriteEntry?> find(int bangumiId) {
+  Future<FavoriteEntry?> find(int bangumiId, {String source = 'cycani'}) {
     final query = _db.select(_db.favoriteEntries)
-      ..where((t) => t.bangumiId.equals(bangumiId));
+      ..where((t) =>
+          t.bangumiId.equals(bangumiId) & t.source.equals(source));
     return query.getSingleOrNull();
   }
 

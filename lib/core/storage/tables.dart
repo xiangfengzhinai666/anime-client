@@ -15,7 +15,8 @@ class HistoryEntries extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
-  Set<Column> get primaryKey => {bangumiId, episode};
+  // 主键必须带 source：次元城 2109 和 B 站 2109 是两部不同的番
+  Set<Column> get primaryKey => {source, bangumiId, episode};
 }
 
 /// 追番：一部番一行，category 为 want / watching / watched。
@@ -31,7 +32,7 @@ class FavoriteEntries extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
-  Set<Column> get primaryKey => {bangumiId};
+  Set<Column> get primaryKey => {source, bangumiId};
 }
 
 /// 键值设置：主题、播放偏好、弹幕偏好等。

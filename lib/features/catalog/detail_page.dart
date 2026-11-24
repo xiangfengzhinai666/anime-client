@@ -472,12 +472,13 @@ class _FavoriteButton extends ConsumerWidget {
     if (id == null) {
       return const SizedBox.shrink();
     }
-    final status = ref.watch(favoriteStatusProvider(id));
+    final source = detail.summary.source.key;
+    final status = ref.watch(favoriteStatusProvider((source: source, id: id)));
 
     Future<void> setCategory(String value) async {
       final dao = ref.read(favoritesDaoProvider);
       if (value == '__remove__') {
-        await dao.remove(id);
+        await dao.remove(id, source: source);
       } else {
         await dao.upsert(
           bangumiId: id,
@@ -485,9 +486,20 @@ class _FavoriteButton extends ConsumerWidget {
           cover: detail.summary.cover,
           category: FavoriteCategory.fromKey(value),
           totalEpisodes: detail.summary.totalEpisodes ?? 0,
-          source: detail.summary.source.key,
+          source: source,
         );
       }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text(
+            value == '__remove__'
+                ? '已取消追番'
+                : '已加入「${FavoriteCategory.fromKey(value).label}」',
+          ),
+        ),
+      );
     }
 
     return PopupMenuButton<String>(

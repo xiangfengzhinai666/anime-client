@@ -132,7 +132,7 @@ class _FavoriteCard extends ConsumerWidget {
     Future<void> move(String value) async {
       final dao = ref.read(favoritesDaoProvider);
       if (value == '__remove__') {
-        await dao.remove(item.bangumiId);
+        await dao.remove(item.bangumiId, source: item.source);
       } else {
         await dao.upsert(
           bangumiId: item.bangumiId,

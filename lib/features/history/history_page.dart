@@ -138,9 +138,12 @@ class _HistoryRow extends StatelessWidget {
 
     return InkWell(
       borderRadius: AppRadius.mdAll,
-      onTap: () => context.push(
-        '/watch/${Uri.encodeComponent(internalId)}/${item.episode}',
-      ),
+      // 次元城能直接播；其它源（B站/AniList）没有播放地址，跳详情页自动找源
+      onTap: () => item.source == 'cycani'
+          ? context.push(
+              '/watch/${Uri.encodeComponent(internalId)}/${item.episode}',
+            )
+          : context.push('/bangumi/${Uri.encodeComponent(internalId)}'),
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.sm),
         decoration: BoxDecoration(
@@ -172,7 +175,7 @@ class _HistoryRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '第 ${item.episode} 集'
-                    '${item.episodeTitle.isEmpty ? '' : ' · ${item.episodeTitle}'}'
+                    '${_extraTitle(item) == '' ? '' : ' · ${_extraTitle(item)}'}'
                     ' · ${(progress * 100).round()}%',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -194,9 +197,11 @@ class _HistoryRow extends StatelessWidget {
               tooltip: '更多',
               onSelected: (value) async {
                 if (value == 'delete') {
-                  await ref
-                      .read(historyDaoProvider)
-                      .removeEpisode(item.bangumiId, item.episode);
+                  await ref.read(historyDaoProvider).removeEpisode(
+                        item.bangumiId,
+                        item.episode,
+                        source: item.source,
+                      );
                 } else if (value == 'detail') {
                   context.push(
                     '/bangumi/${Uri.encodeComponent(internalId)}',
@@ -213,4 +218,13 @@ class _HistoryRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 集标题如果本身就是「第 03 集」这种，就别重复显示。
+String _extraTitle(HistoryEntry item) {
+  final title = item.episodeTitle.trim();
+  if (title.isEmpty) return '';
+  final normalized = title.replaceAll(' ', '');
+  if (RegExp(r'^第0*\d+[集话話]').hasMatch(normalized)) return '';
+  return title;
 }

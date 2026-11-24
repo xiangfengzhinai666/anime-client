@@ -116,9 +116,16 @@ class HomePage extends ConsumerWidget {
                       progress: item.durationSeconds == 0
                           ? 0
                           : item.positionSeconds / item.durationSeconds,
-                      onTap: () => context.push(
-                        '/watch/${Uri.encodeComponent('${item.source}:${item.bangumiId}')}/${item.episode}',
-                      ),
+                      onTap: () {
+                        final id = '${item.source}:${item.bangumiId}';
+                        if (item.source == 'cycani') {
+                          context.push(
+                            '/watch/${Uri.encodeComponent(id)}/${item.episode}',
+                          );
+                        } else {
+                          context.push('/bangumi/${Uri.encodeComponent(id)}');
+                        }
+                      },
                     ),
                 ],
               );

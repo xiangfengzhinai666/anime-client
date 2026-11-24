@@ -204,7 +204,7 @@ class $HistoryEntriesTable extends HistoryEntries
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {bangumiId, episode};
+  Set<GeneratedColumn> get $primaryKey => {source, bangumiId, episode};
   @override
   HistoryEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -580,7 +580,7 @@ class $FavoriteEntriesTable extends FavoriteEntries
     aliasedName,
     false,
     type: DriftSqlType.int,
-    requiredDuringInsert: false,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
@@ -674,6 +674,8 @@ class $FavoriteEntriesTable extends FavoriteEntries
         _bangumiIdMeta,
         bangumiId.isAcceptableOrUnknown(data['bangumi_id']!, _bangumiIdMeta),
       );
+    } else if (isInserting) {
+      context.missing(_bangumiIdMeta);
     }
     if (data.containsKey('title')) {
       context.handle(
@@ -720,7 +722,7 @@ class $FavoriteEntriesTable extends FavoriteEntries
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {bangumiId};
+  Set<GeneratedColumn> get $primaryKey => {source, bangumiId};
   @override
   FavoriteEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -911,6 +913,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
   final Value<int> totalEpisodes;
   final Value<String> source;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const FavoriteEntriesCompanion({
     this.bangumiId = const Value.absent(),
     this.title = const Value.absent(),
@@ -919,16 +922,19 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
     this.totalEpisodes = const Value.absent(),
     this.source = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   FavoriteEntriesCompanion.insert({
-    this.bangumiId = const Value.absent(),
+    required int bangumiId,
     required String title,
     this.cover = const Value.absent(),
     this.category = const Value.absent(),
     this.totalEpisodes = const Value.absent(),
     this.source = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : title = Value(title);
+    this.rowid = const Value.absent(),
+  }) : bangumiId = Value(bangumiId),
+       title = Value(title);
   static Insertable<FavoriteEntry> custom({
     Expression<int>? bangumiId,
     Expression<String>? title,
@@ -937,6 +943,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
     Expression<int>? totalEpisodes,
     Expression<String>? source,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (bangumiId != null) 'bangumi_id': bangumiId,
@@ -946,6 +953,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
       if (totalEpisodes != null) 'total_episodes': totalEpisodes,
       if (source != null) 'source': source,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
@@ -957,6 +965,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
     Value<int>? totalEpisodes,
     Value<String>? source,
     Value<DateTime>? updatedAt,
+    Value<int>? rowid,
   }) {
     return FavoriteEntriesCompanion(
       bangumiId: bangumiId ?? this.bangumiId,
@@ -966,6 +975,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
       totalEpisodes: totalEpisodes ?? this.totalEpisodes,
       source: source ?? this.source,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -993,6 +1003,9 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
     return map;
   }
 
@@ -1005,7 +1018,8 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
           ..write('category: $category, ')
           ..write('totalEpisodes: $totalEpisodes, ')
           ..write('source: $source, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -1803,13 +1817,14 @@ typedef $$HistoryEntriesTableProcessedTableManager =
     >;
 typedef $$FavoriteEntriesTableCreateCompanionBuilder =
     FavoriteEntriesCompanion Function({
-      Value<int> bangumiId,
+      required int bangumiId,
       required String title,
       Value<String> cover,
       Value<String> category,
       Value<int> totalEpisodes,
       Value<String> source,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 typedef $$FavoriteEntriesTableUpdateCompanionBuilder =
     FavoriteEntriesCompanion Function({
@@ -1820,6 +1835,7 @@ typedef $$FavoriteEntriesTableUpdateCompanionBuilder =
       Value<int> totalEpisodes,
       Value<String> source,
       Value<DateTime> updatedAt,
+      Value<int> rowid,
     });
 
 class $$FavoriteEntriesTableFilterComposer
@@ -1985,6 +2001,7 @@ class $$FavoriteEntriesTableTableManager
                 Value<int> totalEpisodes = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => FavoriteEntriesCompanion(
                 bangumiId: bangumiId,
                 title: title,
@@ -1993,16 +2010,18 @@ class $$FavoriteEntriesTableTableManager
                 totalEpisodes: totalEpisodes,
                 source: source,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                Value<int> bangumiId = const Value.absent(),
+                required int bangumiId,
                 required String title,
                 Value<String> cover = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<int> totalEpisodes = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
               }) => FavoriteEntriesCompanion.insert(
                 bangumiId: bangumiId,
                 title: title,
@@ -2011,6 +2030,7 @@ class $$FavoriteEntriesTableTableManager
                 totalEpisodes: totalEpisodes,
                 source: source,
                 updatedAt: updatedAt,
+                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

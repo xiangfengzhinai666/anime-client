@@ -89,10 +89,10 @@ final themeModeProvider =
 
 /// 某番的追番状态（null = 未追）。
 final favoriteStatusProvider =
-    Provider.family<FavoriteCategory?, int>((ref, bangumiId) {
+    Provider.family<FavoriteCategory?, ({String source, int id})>((ref, key) {
   final items = ref.watch(favoritesProvider).valueOrNull ?? const [];
   for (final item in items) {
-    if (item.bangumiId == bangumiId) {
+    if (item.bangumiId == key.id && item.source == key.source) {
       return FavoriteCategory.fromKey(item.category);
     }
   }

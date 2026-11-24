@@ -31,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   /// v1：history / favorites / settings
   /// v2：+ catalog_cache（元数据缓存）
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -45,6 +45,51 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             await m.addColumn(historyEntries, historyEntries.source);
             await m.addColumn(favoriteEntries, favoriteEntries.source);
+          }
+          if (from < 4) {
+            // 主键从 (bangumi_id[, episode]) 改成 (source, bangumi_id[, episode])。
+            // SQLite 不能改主键，只能重建表再把数据搬过去。
+            await customStatement('''
+CREATE TABLE "history_entries_new" (
+  "bangumi_id" INTEGER NOT NULL,
+  "episode" INTEGER NOT NULL,
+  "source" TEXT NOT NULL DEFAULT 'cycani',
+  "title" TEXT NOT NULL DEFAULT '',
+  "episode_title" TEXT NOT NULL DEFAULT '',
+  "cover" TEXT NOT NULL DEFAULT '',
+  "position_seconds" INTEGER NOT NULL DEFAULT 0,
+  "duration_seconds" INTEGER NOT NULL DEFAULT 0,
+  "updated_at" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+  PRIMARY KEY ("source", "bangumi_id", "episode")
+)''');
+            await customStatement('''
+INSERT INTO history_entries_new
+  (bangumi_id, episode, source, title, episode_title, cover, position_seconds, duration_seconds, updated_at)
+SELECT bangumi_id, episode, source, title, episode_title, cover, position_seconds, duration_seconds, updated_at
+FROM history_entries''');
+            await customStatement('DROP TABLE history_entries');
+            await customStatement(
+                'ALTER TABLE history_entries_new RENAME TO history_entries');
+
+            await customStatement('''
+CREATE TABLE "favorite_entries_new" (
+  "bangumi_id" INTEGER NOT NULL,
+  "title" TEXT NOT NULL,
+  "cover" TEXT NOT NULL DEFAULT '',
+  "category" TEXT NOT NULL DEFAULT 'want',
+  "total_episodes" INTEGER NOT NULL DEFAULT 0,
+  "source" TEXT NOT NULL DEFAULT 'cycani',
+  "updated_at" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+  PRIMARY KEY ("source", "bangumi_id")
+)''');
+            await customStatement('''
+INSERT INTO favorite_entries_new
+  (bangumi_id, title, cover, category, total_episodes, source, updated_at)
+SELECT bangumi_id, title, cover, category, total_episodes, source, updated_at
+FROM favorite_entries''');
+            await customStatement('DROP TABLE favorite_entries');
+            await customStatement(
+                'ALTER TABLE favorite_entries_new RENAME TO favorite_entries');
           }
         },
         beforeOpen: (details) async {
