@@ -6,11 +6,13 @@ import '../../app/providers/app_providers.dart';
 import '../../app/theme/app_tokens.dart';
 import '../../app/widgets/empty_state.dart';
 import '../../app/widgets/page_scaffold.dart';
+import '../../core/storage/app_database.dart';
 import '../../core/storage/daos.dart';
+import '../catalog/widgets/cover_image.dart';
 
 /// 追番页：想看 / 在看 / 看过 三态。
 ///
-/// 数据来自本地 favorites 表（S5 接入追番操作入口，S1 先把读链路打通）。
+/// 数据来自本地 favorites 表，点卡片进详情，菜单里可改分类或取消追番。
 class LibraryPage extends ConsumerWidget {
   const LibraryPage({super.key});
 
@@ -22,7 +24,7 @@ class LibraryPage extends ConsumerWidget {
       length: FavoriteCategory.values.length,
       child: PageScaffold(
         title: '追番',
-        subtitle: '想看、在看、看过，全部保存在本机',
+        subtitle: '想看、在看、看过 —— 全部保存在本机',
         scrollable: false,
         actions: [
           favorites.maybeWhen(
@@ -72,35 +74,21 @@ class _CategoryView extends ConsumerWidget {
     final favorites = ref.watch(favoritesProvider);
 
     return favorites.when(
-      loading: () => Column(
-        children: List.generate(
-          3,
-          (index) => Container(
-            height: 72,
-            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: AppRadius.mdAll,
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-            ),
-          ),
-        ),
-      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => EmptyState(
         icon: Icons.error_outline_rounded,
         title: '读取追番列表失败',
         description: '$error',
       ),
       data: (items) {
-        final filtered = items.where((e) => e.category == category.key).toList();
+        final filtered =
+            items.where((e) => e.category == category.key).toList();
         if (filtered.isEmpty) {
           return SingleChildScrollView(
             child: EmptyState(
               icon: Icons.bookmark_add_outlined,
               title: '「${category.label}」还没有番剧',
-              description: 'S5 接入追番操作后，在详情页点收藏即可出现在这里',
+              description: '在详情页点「追番」就能加到这里',
               compact: true,
               action: FilledButton.tonal(
                 onPressed: () => context.go('/browse'),
@@ -109,32 +97,111 @@ class _CategoryView extends ConsumerWidget {
             ),
           );
         }
-
-        return ListView.separated(
-          itemCount: filtered.length,
-          separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-          itemBuilder: (context, index) {
-            final item = filtered[index];
-            return ListTile(
-              shape: const RoundedRectangleBorder(
-                borderRadius: AppRadius.mdAll,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = (constraints.maxWidth / 160).floor().clamp(2, 7);
+            return GridView.builder(
+              itemCount: filtered.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: AppSpacing.md,
+                mainAxisSpacing: AppSpacing.lg,
+                childAspectRatio: 0.56,
               ),
-              tileColor: Theme.of(context).colorScheme.surface,
-              leading: Container(
-                width: 40,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: AppRadius.smAll,
-                ),
-                child: const Icon(Icons.movie_outlined, size: 18),
-              ),
-              title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: Text('${item.totalEpisodes} 话 · ${category.label}'),
+              itemBuilder: (context, index) =>
+                  _FavoriteCard(item: filtered[index], category: category),
             );
           },
         );
       },
+    );
+  }
+}
+
+class _FavoriteCard extends ConsumerWidget {
+  const _FavoriteCard({required this.item, required this.category});
+
+  final FavoriteEntry item;
+  final FavoriteCategory category;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final internalId = '${item.source}:${item.bangumiId}';
+
+    Future<void> move(FavoriteCategory? target) async {
+      final dao = ref.read(favoritesDaoProvider);
+      if (target == null) {
+        await dao.remove(item.bangumiId);
+      } else {
+        await dao.upsert(
+          bangumiId: item.bangumiId,
+          title: item.title,
+          cover: item.cover,
+          category: target,
+          totalEpisodes: item.totalEpisodes,
+          source: item.source,
+        );
+      }
+    }
+
+    return Stack(
+      children: [
+        InkWell(
+          borderRadius: AppRadius.mdAll,
+          onTap: () => context.push(
+            '/bangumi/${Uri.encodeComponent(internalId)}',
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: AppRadius.mdAll,
+                  child: CoverImage(
+                    url: item.cover,
+                    fit: BoxFit.cover,
+                    radius: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium,
+              ),
+              Text(
+                item.totalEpisodes > 0
+                    ? '共 ${item.totalEpisodes} 话'
+                    : category.label,
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          right: 0,
+          top: 0,
+          child: PopupMenuButton<FavoriteCategory?>(
+            tooltip: '更多',
+            icon: const Icon(Icons.more_vert_rounded, size: 18),
+            onSelected: move,
+            itemBuilder: (context) => [
+              for (final target in FavoriteCategory.values)
+                PopupMenuItem(
+                  value: target,
+                  child: Text(
+                    target == category ? '${target.label}（当前）' : target.label,
+                  ),
+                ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: null, child: Text('取消追番')),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

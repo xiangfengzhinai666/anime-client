@@ -31,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   /// v1：history / favorites / settings
   /// v2：+ catalog_cache（元数据缓存）
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -41,6 +41,10 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.createTable(catalogCacheEntries);
+          }
+          if (from < 3) {
+            await m.addColumn(historyEntries, historyEntries.source);
+            await m.addColumn(favoriteEntries, favoriteEntries.source);
           }
         },
         beforeOpen: (details) async {

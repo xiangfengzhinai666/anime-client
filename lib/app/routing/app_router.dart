@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/utils/dev_env.dart';
 import '../../features/catalog/detail_page.dart';
+import '../../features/history/history_page.dart';
 import '../../features/play/player_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../shell/app_shell.dart';
@@ -36,6 +37,11 @@ GoRouter buildRouter({int initialTab = 0}) {
               ],
             ),
         ],
+      ),
+      GoRoute(
+        path: '/history',
+        name: 'history',
+        builder: (context, state) => const HistoryPage(),
       ),
       GoRoute(
         path: '/settings',

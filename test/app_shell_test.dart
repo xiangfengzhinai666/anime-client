@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:anime_client/core/storage/app_database.dart';
-import 'package:anime_client/features/home/home_page.dart';
+import 'package:anime_client/features/history/history_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'test_helpers.dart';
@@ -109,6 +109,7 @@ void main() {
           cover: '',
           positionSeconds: 100,
           durationSeconds: 1000,
+          source: 'cycani',
           updatedAt: DateTime(2026, 11, 23, 20, ep),
         );
 

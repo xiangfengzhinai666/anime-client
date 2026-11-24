@@ -86,3 +86,15 @@ final themeModeProvider =
     ref.watch(appLoggerProvider),
   );
 });
+
+/// 某番的追番状态（null = 未追）。
+final favoriteStatusProvider =
+    Provider.family<FavoriteCategory?, int>((ref, bangumiId) {
+  final items = ref.watch(favoritesProvider).valueOrNull ?? const [];
+  for (final item in items) {
+    if (item.bangumiId == bangumiId) {
+      return FavoriteCategory.fromKey(item.category);
+    }
+  }
+  return null;
+});

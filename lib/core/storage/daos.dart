@@ -38,11 +38,13 @@ class HistoryDao {
     String title = '',
     String episodeTitle = '',
     String cover = '',
+    String source = 'cycani',
   }) {
     return _db.into(_db.historyEntries).insertOnConflictUpdate(
           HistoryEntriesCompanion.insert(
             bangumiId: bangumiId,
             episode: episode,
+            source: Value(source),
             title: Value(title),
             episodeTitle: Value(episodeTitle),
             cover: Value(cover),
@@ -102,6 +104,7 @@ class FavoritesDao {
     String cover = '',
     FavoriteCategory category = FavoriteCategory.want,
     int totalEpisodes = 0,
+    String source = 'cycani',
   }) {
     return _db.into(_db.favoriteEntries).insertOnConflictUpdate(
           FavoriteEntriesCompanion.insert(
@@ -110,6 +113,7 @@ class FavoritesDao {
             cover: Value(cover),
             category: Value(category.key),
             totalEpisodes: Value(totalEpisodes),
+            source: Value(source),
             updatedAt: Value(DateTime.now()),
           ),
         );

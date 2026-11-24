@@ -9,6 +9,9 @@ class HistoryEntries extends Table {
   TextColumn get cover => text().withDefault(const Constant(''))();
   IntColumn get positionSeconds => integer().withDefault(const Constant(0))();
   IntColumn get durationSeconds => integer().withDefault(const Constant(0))();
+
+  /// 来源 id（cycani / bili / ...），历史页跳播放要用。
+  TextColumn get source => text().withDefault(const Constant('cycani'))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -22,6 +25,9 @@ class FavoriteEntries extends Table {
   TextColumn get cover => text().withDefault(const Constant(''))();
   TextColumn get category => text().withDefault(const Constant('want'))();
   IntColumn get totalEpisodes => integer().withDefault(const Constant(0))();
+
+  /// 来源 id（cycani / bili / ...），点卡片进详情要用。
+  TextColumn get source => text().withDefault(const Constant('cycani'))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/providers/app_providers.dart';
 import '../../app/theme/app_tokens.dart';
+import '../../core/storage/daos.dart';
 import '../../app/widgets/empty_state.dart';
 import '../../app/widgets/section_header.dart';
 import 'catalog_providers.dart';
@@ -159,6 +161,7 @@ class _DetailBody extends ConsumerWidget {
               _Header(
                 detail: detail,
                 playable: detail.summary.source == CatalogSource.cycani,
+                favoriteButton: _FavoriteButton(detail: detail),
                 onPlay: (index) =>
                     _playResolved(context, ref, detail, index),
               ),
@@ -236,11 +239,13 @@ class _Header extends StatelessWidget {
     required this.detail,
     required this.onPlay,
     required this.playable,
+    required this.favoriteButton,
   });
 
   final AnimeDetail detail;
   final void Function(int episode)? onPlay;
   final bool playable;
+  final Widget favoriteButton;
 
   @override
   Widget build(BuildContext context) {
@@ -314,13 +319,7 @@ class _Header extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
-                  OutlinedButton.icon(
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('追番功能在 S5 接入')),
-                    ),
-                    icon: const Icon(Icons.bookmark_add_outlined),
-                    label: const Text('追番'),
-                  ),
+                  favoriteButton,
                 ],
               ),
             ],
@@ -455,6 +454,70 @@ class _EnrichmentSection extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// 追番按钮：三态（想看 / 在看 / 看过），可取消。
+class _FavoriteButton extends ConsumerWidget {
+  const _FavoriteButton({required this.detail});
+
+  final AnimeDetail detail;
+
+  int? get _bangumiId => int.tryParse(detail.summary.sourceId);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final id = _bangumiId;
+    if (id == null) {
+      return const SizedBox.shrink();
+    }
+    final status = ref.watch(favoriteStatusProvider(id));
+
+    Future<void> setCategory(FavoriteCategory? category) async {
+      final dao = ref.read(favoritesDaoProvider);
+      if (category == null) {
+        await dao.remove(id);
+      } else {
+        await dao.upsert(
+          bangumiId: id,
+          title: detail.summary.title,
+          cover: detail.summary.cover,
+          category: category,
+          totalEpisodes: detail.summary.totalEpisodes ?? 0,
+          source: detail.summary.source.key,
+        );
+      }
+    }
+
+    return PopupMenuButton<FavoriteCategory?>(
+      tooltip: '追番',
+      onSelected: setCategory,
+      itemBuilder: (context) => [
+        for (final category in FavoriteCategory.values)
+          PopupMenuItem(
+            value: category,
+            child: Text(
+              category == status ? '${category.label}（当前）' : category.label,
+            ),
+          ),
+        if (status != null) const PopupMenuDivider(),
+        if (status != null)
+          const PopupMenuItem(value: null, child: Text('取消追番')),
+      ],
+      child: OutlinedButton.icon(
+        // 点击交给外层 PopupMenuButton，这里只是外观；用主题色保证看起来可点
+        onPressed: null,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.primary,
+          disabledForegroundColor: Theme.of(context).colorScheme.primary,
+          side: BorderSide(color: Theme.of(context).colorScheme.outline),
+        ),
+        icon: Icon(
+          status == null ? Icons.bookmark_add_outlined : Icons.bookmark_rounded,
+        ),
+        label: Text(status == null ? '追番' : status.label),
+      ),
     );
   }
 }

@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers/app_providers.dart';
-import '../../core/storage/app_database.dart';
 import '../../app/theme/app_tokens.dart';
 import '../../app/widgets/empty_state.dart';
 import '../../app/widgets/page_scaffold.dart';
 import '../../app/widgets/section_header.dart';
 import '../catalog/catalog_providers.dart';
+import '../history/history_utils.dart';
 import '../catalog/data/catalog_merge.dart';
 import '../catalog/data/catalog_models.dart';
 import '../catalog/widgets/anime_card.dart';
@@ -306,12 +306,4 @@ class _HistoryRow extends StatelessWidget {
 
 }
 
-/// 同一部番只保留最近的一条观看记录（输入需按时间倒序）。
-List<HistoryEntry> latestPerShow(List<HistoryEntry> items) {
-  final seen = <int>{};
-  final out = <HistoryEntry>[];
-  for (final item in items) {
-    if (seen.add(item.bangumiId)) out.add(item);
-  }
-  return out;
-}
+

@@ -106,6 +106,7 @@ final saveProgressProvider = Provider<void Function({
         title: resolved.title,
         episodeTitle: episodeTitle,
         cover: resolved.cover,
+        source: resolved.source.key,
       );
     } catch (e) {
       logger.warn('play', '保存播放进度失败：$e');

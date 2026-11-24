@@ -87,6 +87,16 @@ class $HistoryEntriesTable extends HistoryEntries
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('cycani'),
+  );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -108,6 +118,7 @@ class $HistoryEntriesTable extends HistoryEntries
     cover,
     positionSeconds,
     durationSeconds,
+    source,
     updatedAt,
   ];
   @override
@@ -177,6 +188,12 @@ class $HistoryEntriesTable extends HistoryEntries
         ),
       );
     }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
     if (data.containsKey('updated_at')) {
       context.handle(
         _updatedAtMeta,
@@ -220,6 +237,10 @@ class $HistoryEntriesTable extends HistoryEntries
         DriftSqlType.int,
         data['${effectivePrefix}duration_seconds'],
       )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -241,6 +262,9 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
   final String cover;
   final int positionSeconds;
   final int durationSeconds;
+
+  /// 来源 id（cycani / bili / ...），历史页跳播放要用。
+  final String source;
   final DateTime updatedAt;
   const HistoryEntry({
     required this.bangumiId,
@@ -250,6 +274,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
     required this.cover,
     required this.positionSeconds,
     required this.durationSeconds,
+    required this.source,
     required this.updatedAt,
   });
   @override
@@ -262,6 +287,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
     map['cover'] = Variable<String>(cover);
     map['position_seconds'] = Variable<int>(positionSeconds);
     map['duration_seconds'] = Variable<int>(durationSeconds);
+    map['source'] = Variable<String>(source);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -275,6 +301,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
       cover: Value(cover),
       positionSeconds: Value(positionSeconds),
       durationSeconds: Value(durationSeconds),
+      source: Value(source),
       updatedAt: Value(updatedAt),
     );
   }
@@ -292,6 +319,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
       cover: serializer.fromJson<String>(json['cover']),
       positionSeconds: serializer.fromJson<int>(json['positionSeconds']),
       durationSeconds: serializer.fromJson<int>(json['durationSeconds']),
+      source: serializer.fromJson<String>(json['source']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -306,6 +334,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
       'cover': serializer.toJson<String>(cover),
       'positionSeconds': serializer.toJson<int>(positionSeconds),
       'durationSeconds': serializer.toJson<int>(durationSeconds),
+      'source': serializer.toJson<String>(source),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -318,6 +347,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
     String? cover,
     int? positionSeconds,
     int? durationSeconds,
+    String? source,
     DateTime? updatedAt,
   }) => HistoryEntry(
     bangumiId: bangumiId ?? this.bangumiId,
@@ -327,6 +357,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
     cover: cover ?? this.cover,
     positionSeconds: positionSeconds ?? this.positionSeconds,
     durationSeconds: durationSeconds ?? this.durationSeconds,
+    source: source ?? this.source,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   HistoryEntry copyWithCompanion(HistoryEntriesCompanion data) {
@@ -344,6 +375,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
       durationSeconds: data.durationSeconds.present
           ? data.durationSeconds.value
           : this.durationSeconds,
+      source: data.source.present ? data.source.value : this.source,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -358,6 +390,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
           ..write('cover: $cover, ')
           ..write('positionSeconds: $positionSeconds, ')
           ..write('durationSeconds: $durationSeconds, ')
+          ..write('source: $source, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -372,6 +405,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
     cover,
     positionSeconds,
     durationSeconds,
+    source,
     updatedAt,
   );
   @override
@@ -385,6 +419,7 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
           other.cover == this.cover &&
           other.positionSeconds == this.positionSeconds &&
           other.durationSeconds == this.durationSeconds &&
+          other.source == this.source &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -396,6 +431,7 @@ class HistoryEntriesCompanion extends UpdateCompanion<HistoryEntry> {
   final Value<String> cover;
   final Value<int> positionSeconds;
   final Value<int> durationSeconds;
+  final Value<String> source;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const HistoryEntriesCompanion({
@@ -406,6 +442,7 @@ class HistoryEntriesCompanion extends UpdateCompanion<HistoryEntry> {
     this.cover = const Value.absent(),
     this.positionSeconds = const Value.absent(),
     this.durationSeconds = const Value.absent(),
+    this.source = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -417,6 +454,7 @@ class HistoryEntriesCompanion extends UpdateCompanion<HistoryEntry> {
     this.cover = const Value.absent(),
     this.positionSeconds = const Value.absent(),
     this.durationSeconds = const Value.absent(),
+    this.source = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : bangumiId = Value(bangumiId),
@@ -429,6 +467,7 @@ class HistoryEntriesCompanion extends UpdateCompanion<HistoryEntry> {
     Expression<String>? cover,
     Expression<int>? positionSeconds,
     Expression<int>? durationSeconds,
+    Expression<String>? source,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -440,6 +479,7 @@ class HistoryEntriesCompanion extends UpdateCompanion<HistoryEntry> {
       if (cover != null) 'cover': cover,
       if (positionSeconds != null) 'position_seconds': positionSeconds,
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
+      if (source != null) 'source': source,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -453,6 +493,7 @@ class HistoryEntriesCompanion extends UpdateCompanion<HistoryEntry> {
     Value<String>? cover,
     Value<int>? positionSeconds,
     Value<int>? durationSeconds,
+    Value<String>? source,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
@@ -464,6 +505,7 @@ class HistoryEntriesCompanion extends UpdateCompanion<HistoryEntry> {
       cover: cover ?? this.cover,
       positionSeconds: positionSeconds ?? this.positionSeconds,
       durationSeconds: durationSeconds ?? this.durationSeconds,
+      source: source ?? this.source,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -493,6 +535,9 @@ class HistoryEntriesCompanion extends UpdateCompanion<HistoryEntry> {
     if (durationSeconds.present) {
       map['duration_seconds'] = Variable<int>(durationSeconds.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -512,6 +557,7 @@ class HistoryEntriesCompanion extends UpdateCompanion<HistoryEntry> {
           ..write('cover: $cover, ')
           ..write('positionSeconds: $positionSeconds, ')
           ..write('durationSeconds: $durationSeconds, ')
+          ..write('source: $source, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -579,6 +625,16 @@ class $FavoriteEntriesTable extends FavoriteEntries
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('cycani'),
+  );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -598,6 +654,7 @@ class $FavoriteEntriesTable extends FavoriteEntries
     cover,
     category,
     totalEpisodes,
+    source,
     updatedAt,
   ];
   @override
@@ -647,6 +704,12 @@ class $FavoriteEntriesTable extends FavoriteEntries
         ),
       );
     }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
     if (data.containsKey('updated_at')) {
       context.handle(
         _updatedAtMeta,
@@ -682,6 +745,10 @@ class $FavoriteEntriesTable extends FavoriteEntries
         DriftSqlType.int,
         data['${effectivePrefix}total_episodes'],
       )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -701,6 +768,9 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
   final String cover;
   final String category;
   final int totalEpisodes;
+
+  /// 来源 id（cycani / bili / ...），点卡片进详情要用。
+  final String source;
   final DateTime updatedAt;
   const FavoriteEntry({
     required this.bangumiId,
@@ -708,6 +778,7 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
     required this.cover,
     required this.category,
     required this.totalEpisodes,
+    required this.source,
     required this.updatedAt,
   });
   @override
@@ -718,6 +789,7 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
     map['cover'] = Variable<String>(cover);
     map['category'] = Variable<String>(category);
     map['total_episodes'] = Variable<int>(totalEpisodes);
+    map['source'] = Variable<String>(source);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -729,6 +801,7 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
       cover: Value(cover),
       category: Value(category),
       totalEpisodes: Value(totalEpisodes),
+      source: Value(source),
       updatedAt: Value(updatedAt),
     );
   }
@@ -744,6 +817,7 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
       cover: serializer.fromJson<String>(json['cover']),
       category: serializer.fromJson<String>(json['category']),
       totalEpisodes: serializer.fromJson<int>(json['totalEpisodes']),
+      source: serializer.fromJson<String>(json['source']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -756,6 +830,7 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
       'cover': serializer.toJson<String>(cover),
       'category': serializer.toJson<String>(category),
       'totalEpisodes': serializer.toJson<int>(totalEpisodes),
+      'source': serializer.toJson<String>(source),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -766,6 +841,7 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
     String? cover,
     String? category,
     int? totalEpisodes,
+    String? source,
     DateTime? updatedAt,
   }) => FavoriteEntry(
     bangumiId: bangumiId ?? this.bangumiId,
@@ -773,6 +849,7 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
     cover: cover ?? this.cover,
     category: category ?? this.category,
     totalEpisodes: totalEpisodes ?? this.totalEpisodes,
+    source: source ?? this.source,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   FavoriteEntry copyWithCompanion(FavoriteEntriesCompanion data) {
@@ -784,6 +861,7 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
       totalEpisodes: data.totalEpisodes.present
           ? data.totalEpisodes.value
           : this.totalEpisodes,
+      source: data.source.present ? data.source.value : this.source,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -796,14 +874,22 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
           ..write('cover: $cover, ')
           ..write('category: $category, ')
           ..write('totalEpisodes: $totalEpisodes, ')
+          ..write('source: $source, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(bangumiId, title, cover, category, totalEpisodes, updatedAt);
+  int get hashCode => Object.hash(
+    bangumiId,
+    title,
+    cover,
+    category,
+    totalEpisodes,
+    source,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -813,6 +899,7 @@ class FavoriteEntry extends DataClass implements Insertable<FavoriteEntry> {
           other.cover == this.cover &&
           other.category == this.category &&
           other.totalEpisodes == this.totalEpisodes &&
+          other.source == this.source &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -822,6 +909,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
   final Value<String> cover;
   final Value<String> category;
   final Value<int> totalEpisodes;
+  final Value<String> source;
   final Value<DateTime> updatedAt;
   const FavoriteEntriesCompanion({
     this.bangumiId = const Value.absent(),
@@ -829,6 +917,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
     this.cover = const Value.absent(),
     this.category = const Value.absent(),
     this.totalEpisodes = const Value.absent(),
+    this.source = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
   FavoriteEntriesCompanion.insert({
@@ -837,6 +926,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
     this.cover = const Value.absent(),
     this.category = const Value.absent(),
     this.totalEpisodes = const Value.absent(),
+    this.source = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : title = Value(title);
   static Insertable<FavoriteEntry> custom({
@@ -845,6 +935,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
     Expression<String>? cover,
     Expression<String>? category,
     Expression<int>? totalEpisodes,
+    Expression<String>? source,
     Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
@@ -853,6 +944,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
       if (cover != null) 'cover': cover,
       if (category != null) 'category': category,
       if (totalEpisodes != null) 'total_episodes': totalEpisodes,
+      if (source != null) 'source': source,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
   }
@@ -863,6 +955,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
     Value<String>? cover,
     Value<String>? category,
     Value<int>? totalEpisodes,
+    Value<String>? source,
     Value<DateTime>? updatedAt,
   }) {
     return FavoriteEntriesCompanion(
@@ -871,6 +964,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
       cover: cover ?? this.cover,
       category: category ?? this.category,
       totalEpisodes: totalEpisodes ?? this.totalEpisodes,
+      source: source ?? this.source,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -893,6 +987,9 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
     if (totalEpisodes.present) {
       map['total_episodes'] = Variable<int>(totalEpisodes.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -907,6 +1004,7 @@ class FavoriteEntriesCompanion extends UpdateCompanion<FavoriteEntry> {
           ..write('cover: $cover, ')
           ..write('category: $category, ')
           ..write('totalEpisodes: $totalEpisodes, ')
+          ..write('source: $source, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -1428,6 +1526,7 @@ typedef $$HistoryEntriesTableCreateCompanionBuilder =
       Value<String> cover,
       Value<int> positionSeconds,
       Value<int> durationSeconds,
+      Value<String> source,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -1440,6 +1539,7 @@ typedef $$HistoryEntriesTableUpdateCompanionBuilder =
       Value<String> cover,
       Value<int> positionSeconds,
       Value<int> durationSeconds,
+      Value<String> source,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -1485,6 +1585,11 @@ class $$HistoryEntriesTableFilterComposer
 
   ColumnFilters<int> get durationSeconds => $composableBuilder(
     column: $table.durationSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1538,6 +1643,11 @@ class $$HistoryEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -1579,6 +1689,9 @@ class $$HistoryEntriesTableAnnotationComposer
     column: $table.durationSeconds,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -1624,6 +1737,7 @@ class $$HistoryEntriesTableTableManager
                 Value<String> cover = const Value.absent(),
                 Value<int> positionSeconds = const Value.absent(),
                 Value<int> durationSeconds = const Value.absent(),
+                Value<String> source = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => HistoryEntriesCompanion(
@@ -1634,6 +1748,7 @@ class $$HistoryEntriesTableTableManager
                 cover: cover,
                 positionSeconds: positionSeconds,
                 durationSeconds: durationSeconds,
+                source: source,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -1646,6 +1761,7 @@ class $$HistoryEntriesTableTableManager
                 Value<String> cover = const Value.absent(),
                 Value<int> positionSeconds = const Value.absent(),
                 Value<int> durationSeconds = const Value.absent(),
+                Value<String> source = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => HistoryEntriesCompanion.insert(
@@ -1656,6 +1772,7 @@ class $$HistoryEntriesTableTableManager
                 cover: cover,
                 positionSeconds: positionSeconds,
                 durationSeconds: durationSeconds,
+                source: source,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -1691,6 +1808,7 @@ typedef $$FavoriteEntriesTableCreateCompanionBuilder =
       Value<String> cover,
       Value<String> category,
       Value<int> totalEpisodes,
+      Value<String> source,
       Value<DateTime> updatedAt,
     });
 typedef $$FavoriteEntriesTableUpdateCompanionBuilder =
@@ -1700,6 +1818,7 @@ typedef $$FavoriteEntriesTableUpdateCompanionBuilder =
       Value<String> cover,
       Value<String> category,
       Value<int> totalEpisodes,
+      Value<String> source,
       Value<DateTime> updatedAt,
     });
 
@@ -1734,6 +1853,11 @@ class $$FavoriteEntriesTableFilterComposer
 
   ColumnFilters<int> get totalEpisodes => $composableBuilder(
     column: $table.totalEpisodes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1777,6 +1901,11 @@ class $$FavoriteEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -1808,6 +1937,9 @@ class $$FavoriteEntriesTableAnnotationComposer
     column: $table.totalEpisodes,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -1851,6 +1983,7 @@ class $$FavoriteEntriesTableTableManager
                 Value<String> cover = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<int> totalEpisodes = const Value.absent(),
+                Value<String> source = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => FavoriteEntriesCompanion(
                 bangumiId: bangumiId,
@@ -1858,6 +1991,7 @@ class $$FavoriteEntriesTableTableManager
                 cover: cover,
                 category: category,
                 totalEpisodes: totalEpisodes,
+                source: source,
                 updatedAt: updatedAt,
               ),
           createCompanionCallback:
@@ -1867,6 +2001,7 @@ class $$FavoriteEntriesTableTableManager
                 Value<String> cover = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<int> totalEpisodes = const Value.absent(),
+                Value<String> source = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => FavoriteEntriesCompanion.insert(
                 bangumiId: bangumiId,
@@ -1874,6 +2009,7 @@ class $$FavoriteEntriesTableTableManager
                 cover: cover,
                 category: category,
                 totalEpisodes: totalEpisodes,
+                source: source,
                 updatedAt: updatedAt,
               ),
           withReferenceMapper: (p0) => p0
